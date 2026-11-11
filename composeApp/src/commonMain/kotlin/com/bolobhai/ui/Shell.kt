@@ -32,16 +32,16 @@ fun Shell(appState: AppState, hotkeyLabel: String) {
         // Right border of the sidebar.
         Box(Modifier.width(1.dp).fillMaxHeight().background(c.border))
         Box(Modifier.fillMaxSize()) {
-            ContentHost(screen)
+            ContentHost(appState, screen)
         }
     }
 }
 
 @Composable
-private fun ContentHost(screen: Screen) {
+private fun ContentHost(appState: AppState, screen: Screen) {
     when (screen) {
         Screen.History -> HistoryScreen()
-        Screen.QuickProfiles -> QuickProfilesScreen()
+        Screen.QuickProfiles -> QuickProfilesScreen(appState)
         Screen.AllProfiles -> AllProfilesScreen()
         Screen.Dictionary -> DictionaryScreen()
         Screen.Models -> ModelsScreen()

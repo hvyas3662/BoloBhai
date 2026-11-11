@@ -15,12 +15,6 @@ fun HistoryScreen() = ScreenScaffold(
 ) { ComingSoon() }
 
 @Composable
-fun QuickProfilesScreen() = ScreenScaffold(
-    title = "Quick Profiles",
-    subtitle = "Five post-processing profiles on number keys. Switch in one tap, even mid-recording.",
-) { ComingSoon() }
-
-@Composable
 fun AllProfilesScreen() = ScreenScaffold(
     title = "All Profiles",
     subtitle = "Every .md file in ~/.bolobhai/profiles/",

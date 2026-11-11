@@ -23,6 +23,30 @@ class QuickSlotsTest {
     }
 
     @Test
+    fun assign_toEmptySlot_setsIt() {
+        val slots = mapOf("1" to "a.md", "2" to null, "3" to null, "4" to null, "5" to null)
+        val r = assignSlotMap(slots, slot = 3, fileName = "c.md")
+        assertEquals("c.md", r["3"])
+        assertEquals("a.md", r["1"])
+    }
+
+    @Test
+    fun assign_profileAlreadyInAnotherSlot_movesIt() {
+        val slots = mapOf("1" to "a.md", "2" to null, "3" to null, "4" to null, "5" to null)
+        val r = assignSlotMap(slots, slot = 2, fileName = "a.md")
+        assertEquals(null, r["1"])
+        assertEquals("a.md", r["2"])
+    }
+
+    @Test
+    fun assign_null_clearsSlot() {
+        val slots = mapOf("1" to "a.md", "2" to "b.md", "3" to null, "4" to null, "5" to null)
+        val r = assignSlotMap(slots, slot = 1, fileName = null)
+        assertEquals(null, r["1"])
+        assertEquals("b.md", r["2"])
+    }
+
+    @Test
     fun multipleMissing_allReported() {
         val slots = mapOf("1" to "x.md", "2" to "y.md", "3" to "z.md", "4" to null, "5" to null)
         val r = reconcileQuickSlots(slots, available = emptySet())

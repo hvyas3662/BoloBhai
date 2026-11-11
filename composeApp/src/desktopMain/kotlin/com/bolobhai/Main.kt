@@ -71,6 +71,8 @@ fun main() = application {
         )
     }
     val pill by controller.pill.collectAsState()
+    val activeSlot by appState.activeSlot.collectAsState()
+    val profiles by appState.profiles.collectAsState()
 
     // Load profiles (+ defaults), watch for external edits, and start sidecars once.
     LaunchedEffect(Unit) {
@@ -104,6 +106,13 @@ fun main() = application {
             Item("Settings…") {
                 appState.navigateTo(Screen.Settings)
                 windowVisible = true
+            }
+            Separator()
+            for (slot in 1..5) {
+                val file = settings.quickSlots[slot.toString()]
+                val name = file?.let { f -> profiles.firstOrNull { it.fileName == f }?.name } ?: "Empty"
+                val marker = if (slot == activeSlot) "● " else "   "
+                Item("$marker[$slot] $name", enabled = file != null) { appState.setActiveSlot(slot) }
             }
             Separator()
             Item("Quit Bolo Bhai") {

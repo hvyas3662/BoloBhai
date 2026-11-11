@@ -82,6 +82,23 @@ class AppState(
         persist { it.copy(activeSlot = resolved) }
     }
 
+    /** Assign a profile to a slot (null = clear), keeping a profile in at most one slot (§7). */
+    fun assignSlot(slot: Int, fileName: String?) {
+        val nextSlots = assignSlotMap(_settings.value.quickSlots, slot, fileName)
+        val resolved = resolveActiveSlot(nextSlots, _settings.value.activeSlot)
+        _activeSlot.value = resolved
+        persist { it.copy(quickSlots = nextSlots, activeSlot = resolved) }
+    }
+
+    /** Persist an edited/created profile body and reload. */
+    fun saveProfile(profile: Profile) {
+        val repo = profilesRepo ?: return
+        repo.write(profile)
+        reloadProfiles()
+    }
+
+    fun setPostProcessing(enabled: Boolean) = persist { it.copy(postProcessing = enabled) }
+
     private fun persist(transform: (Settings) -> Settings) {
         val next = transform(_settings.value)
         _settings.value = next
