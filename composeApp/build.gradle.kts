@@ -12,6 +12,7 @@ kotlin {
 
     sourceSets {
         val desktopMain by getting
+        val desktopTest by getting
 
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -27,6 +28,11 @@ kotlin {
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
+            implementation(libs.jna)
+            implementation(libs.jna.platform)
+        }
+        desktopTest.dependencies {
+            implementation(libs.kotlin.test)
         }
     }
 }
