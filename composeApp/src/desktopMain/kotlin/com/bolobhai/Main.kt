@@ -21,6 +21,7 @@ import com.bolobhai.data.FileSettingsRepo
 import com.bolobhai.data.ProfilesRepo
 import com.bolobhai.data.ProfilesWatcher
 import com.bolobhai.domain.HotkeyInput
+import com.bolobhai.platform.LlamaLauncher
 import com.bolobhai.platform.WhisperLauncher
 import com.bolobhai.platform.currentPlatform
 import com.bolobhai.platform.win.WinKeyboardHook
@@ -58,6 +59,12 @@ fun main() = application {
                 WhisperLauncher.launch(
                     port,
                     platform.appDataRoot().resolve("models").resolve(appState.settings.value.activeWhisperModel),
+                )
+            },
+            launchLlama = { port ->
+                LlamaLauncher.launch(
+                    port,
+                    platform.appDataRoot().resolve("models").resolve(appState.settings.value.activeLlmModel),
                 )
             },
             paste = if (isWindows) WinPaster::paste else { _ -> },

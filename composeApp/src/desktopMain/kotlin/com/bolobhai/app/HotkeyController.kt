@@ -5,9 +5,12 @@ import com.bolobhai.audio.pcm16ToWav
 import com.bolobhai.domain.HotkeyEffect
 import com.bolobhai.domain.HotkeyInput
 import com.bolobhai.domain.HotkeyStateMachine
+import com.bolobhai.domain.Profile
 import com.bolobhai.domain.RecMode
 import com.bolobhai.domain.capitalizeFirst
+import com.bolobhai.domain.cleanupLlmOutput
 import com.bolobhai.domain.shortProfileName
+import com.bolobhai.sidecar.LlamaClient
 import com.bolobhai.sidecar.ProcessSupervisor
 import com.bolobhai.sidecar.SidecarStatus
 import com.bolobhai.sidecar.WhisperClient
@@ -24,18 +27,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.ServerSocket
 
 /**
- * Ties the hotkey hook to the gesture state machine, recorder, pill and the whisper sidecar, then
- * pastes the result (BoloBhai.md §9). No LLM in this milestone: the corrected raw transcript is
- * pasted. When the whisper sidecar is not installed/ready the pipeline degrades gracefully.
+ * Ties the hotkey hook to the gesture state machine, recorder, pill and the whisper + llama
+ * sidecars, then pastes the result (BoloBhai.md §9). Post-processing runs the active profile's
+ * body as the LLM system prompt with a 15 s timeout; on failure/timeout the corrected raw
+ * transcript is pasted instead. Sidecars absent => graceful degradation (no crash).
  */
 class HotkeyController(
     private val appState: AppState,
     private val hotkeyLabel: String,
     private val pasteShortcut: String,
-    private val launchWhisper: (port: Int) -> Process?,
+    launchWhisper: (port: Int) -> Process?,
+    launchLlama: (port: Int) -> Process?,
     private val paste: (String) -> Unit,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -46,11 +52,20 @@ class HotkeyController(
 
     private val whisperPort = freePort()
     private val whisper = WhisperClient("http://127.0.0.1:$whisperPort")
-    private val supervisor = ProcessSupervisor(
+    private val whisperSupervisor = ProcessSupervisor(
         launch = { launchWhisper(whisperPort) },
         healthCheck = { whisper.health() },
     )
-    val sidecarStatus: StateFlow<SidecarStatus> get() = supervisor.status
+
+    private val llamaPort = freePort()
+    private val llama = LlamaClient("http://127.0.0.1:$llamaPort")
+    private val llamaSupervisor = ProcessSupervisor(
+        launch = { launchLlama(llamaPort) },
+        healthCheck = { llama.health() },
+    )
+
+    val whisperStatus: StateFlow<SidecarStatus> get() = whisperSupervisor.status
+    val llamaStatus: StateFlow<SidecarStatus> get() = llamaSupervisor.status
 
     private val _pill = MutableStateFlow<PillUiState?>(null)
     val pill: StateFlow<PillUiState?> = _pill.asStateFlow()
@@ -63,7 +78,8 @@ class HotkeyController(
     private var tickerJob: Job? = null
 
     fun startSidecars() {
-        scope.launch { supervisor.start() }
+        scope.launch { whisperSupervisor.start() }
+        scope.launch { llamaSupervisor.start() }
     }
 
     fun isRecording(): Boolean = sm.state in RECORDING_STATES
@@ -104,34 +120,59 @@ class HotkeyController(
         _pill.value = buildPill(PillPhase.Processing)
         scope.launch {
             val pcm = recorder.stop()
-            if (supervisor.status.value != SidecarStatus.Ready) {
-                fail("Speech engine not installed")
+            if (whisperSupervisor.status.value != SidecarStatus.Ready) {
+                finishFailed("Speech engine not installed")
                 return@launch
             }
-            val wav = pcm16ToWav(pcm)
             val settings = appState.settings.value
-            val transcript = whisper.transcribe(wav, settings.language, prompt = "")
+            val transcript = whisper.transcribe(pcm16ToWav(pcm), settings.language, prompt = "")
             if (transcript.isBlank()) {
-                fail("Couldn't transcribe")
+                finishToast("Didn't catch that")
                 return@launch
             }
-            // M2/M6: no LLM yet — paste the corrected raw transcript.
-            paste(capitalizeFirst(transcript))
-            _pill.value = buildPill(PillPhase.Pasted)
-            delay(1200)
-            hide()
-            sm.onEvent(HotkeyInput.ProcessingDone, System.currentTimeMillis())
+            // Dictionary corrections land in M5; the raw transcript is the "corrected" text for now.
+            val corrected = transcript
+            val profile = activeProfile()
+
+            if (settings.postProcessing && profile != null && llamaSupervisor.status.value == SidecarStatus.Ready) {
+                val raw = withTimeoutOrNull(15_000) { llama.complete(profile.body, corrected) }
+                val cleaned = raw?.let { cleanupLlmOutput(it) }
+                if (!cleaned.isNullOrBlank()) {
+                    paste(cleaned)
+                    finishPasted()
+                } else {
+                    // §9: LLM failed/timeout -> paste the corrected raw transcript, show Failed.
+                    paste(capitalizeFirst(corrected))
+                    finishFailed("LLM timeout · raw text pasted")
+                }
+            } else {
+                paste(capitalizeFirst(corrected))
+                finishPasted()
+            }
         }
     }
 
-    private fun fail(message: String) {
+    private suspend fun finishPasted() {
+        _pill.value = buildPill(PillPhase.Pasted)
+        delay(1200)
+        endProcessing()
+    }
+
+    private suspend fun finishFailed(message: String) {
         _pill.value = buildPill(PillPhase.Failed).copy(failedMessage = message)
         _toast.value = message
-        scope.launch {
-            delay(5000)
-            hide()
-            sm.onEvent(HotkeyInput.ProcessingDone, System.currentTimeMillis())
-        }
+        delay(5000)
+        endProcessing()
+    }
+
+    private fun finishToast(message: String) {
+        _toast.value = message
+        endProcessing()
+    }
+
+    private fun endProcessing() {
+        hide()
+        sm.onEvent(HotkeyInput.ProcessingDone, System.currentTimeMillis())
     }
 
     private fun discard(toast: String?) {
@@ -139,6 +180,11 @@ class HotkeyController(
         recorder.cancel()
         hide()
         if (toast != null) _toast.value = toast
+    }
+
+    private fun activeProfile(): Profile? {
+        val file = appState.settings.value.quickSlots[appState.activeSlot.value.toString()] ?: return null
+        return appState.profiles.value.firstOrNull { it.fileName == file }
     }
 
     private fun scheduleDoubleTapTimeout() {
