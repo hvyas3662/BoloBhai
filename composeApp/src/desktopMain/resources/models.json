@@ -1,0 +1,45 @@
+{
+  "models": [
+    {
+      "id": "ggml-large-v3-turbo.bin",
+      "kind": "stt",
+      "name": "Whisper large-v3-turbo",
+      "file": "ggml-large-v3-turbo.bin",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin",
+      "sizeBytes": 1620000000,
+      "ram": "~2 GB",
+      "default": true
+    },
+    {
+      "id": "ggml-large-v3-turbo-q5_0.bin",
+      "kind": "stt",
+      "name": "Whisper large-v3-turbo q5_0",
+      "file": "ggml-large-v3-turbo-q5_0.bin",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin",
+      "sizeBytes": 547000000,
+      "ram": "~1 GB",
+      "default": false
+    },
+    {
+      "id": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "kind": "llm",
+      "name": "Qwen3-4B-Instruct-2507 Q4_K_M",
+      "file": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "url": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "sizeBytes": 2500000000,
+      "ram": "3–4 GB",
+      "default": true
+    },
+    {
+      "id": "gemma-3-4b-it-Q4_K_M.gguf",
+      "kind": "llm",
+      "name": "Gemma 3 4B IT Q4_K_M",
+      "file": "gemma-3-4b-it-Q4_K_M.gguf",
+      "url": "https://huggingface.co/ggml-org/gemma-3-4b-it-GGUF/resolve/main/gemma-3-4b-it-Q4_K_M.gguf",
+      "sizeBytes": 2490000000,
+      "ram": "3–4 GB",
+      "note": "Often better at Hindi",
+      "default": false
+    }
+  ]
+}
