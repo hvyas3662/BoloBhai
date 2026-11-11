@@ -47,6 +47,13 @@ class AppState(
     private val _currentScreen = MutableStateFlow(Screen.History)
     val currentScreen: StateFlow<Screen> = _currentScreen.asStateFlow()
 
+    /** Transient toast message for the main window (BoloBhai.md §13.7). */
+    private val _toast = MutableStateFlow<String?>(null)
+    val toast: StateFlow<String?> = _toast.asStateFlow()
+
+    fun toast(message: String) { _toast.value = message }
+    fun clearToast() { _toast.value = null }
+
     private val _theme = MutableStateFlow(themeModeOf(_settings.value.theme))
     val theme: StateFlow<ThemeMode> = _theme.asStateFlow()
 

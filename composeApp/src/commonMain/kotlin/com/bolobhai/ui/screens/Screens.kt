@@ -9,12 +9,6 @@ import com.bolobhai.ui.components.BoloButton
  */
 
 @Composable
-fun HistoryScreen() = ScreenScaffold(
-    title = "History",
-    subtitle = "0 dictations",
-) { ComingSoon() }
-
-@Composable
 fun AllProfilesScreen() = ScreenScaffold(
     title = "All Profiles",
     subtitle = "Every .md file in ~/.bolobhai/profiles/",
