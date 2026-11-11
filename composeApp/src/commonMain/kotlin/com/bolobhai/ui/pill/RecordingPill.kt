@@ -1,10 +1,13 @@
 package com.bolobhai.ui.pill
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,8 +50,12 @@ fun RecordingPill(
     onRetry: () -> Unit = {},
 ) {
     val c = Bolo.colors
+    // Fade + slide-in over 180 ms when the pill appears (BoloBhai.md §8).
+    val enter = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { enter.animateTo(1f, tween(180)) }
     Row(
         modifier = modifier
+            .graphicsLayer { alpha = enter.value; translationY = (1f - enter.value) * 12.dp.toPx() }
             .height(48.dp)
             .widthIn(max = 460.dp)
             .shadow(16.dp, BoloShapes.pill)

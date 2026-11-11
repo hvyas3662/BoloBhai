@@ -67,6 +67,12 @@ class WavTest {
     }
 
     @Test
+    fun tone_lengthMatchesDuration() {
+        // 100 ms mono 16-bit at 8 kHz = 800 samples = 1600 bytes.
+        assertEquals(1600, Sounds.tone(440.0, 100, sampleRate = 8000).size)
+    }
+
+    @Test
     fun rms_silence_isZero() {
         assertEquals(0.0, rms16(ByteArray(64)), 1e-9)
     }

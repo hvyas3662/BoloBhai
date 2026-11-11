@@ -1,6 +1,7 @@
 package com.bolobhai.app
 
 import com.bolobhai.audio.AudioRecorder
+import com.bolobhai.audio.Sounds
 import com.bolobhai.audio.pcm16ToWav
 import com.bolobhai.domain.HotkeyEffect
 import com.bolobhai.domain.HotkeyInput
@@ -181,6 +182,7 @@ class HotkeyController(
     private fun startRecording(mode: RecMode, now: Long) {
         recordingStartMs = now
         levels = List(14) { 0f }
+        if (appState.settings.value.sounds) Sounds.start()
         recorder.start(appState.settings.value.microphone) { level -> levels = (levels.drop(1) + level) }
         _pill.value = buildPill(toPhase(mode))
         startTicker()
@@ -188,6 +190,7 @@ class HotkeyController(
 
     private fun runPipeline() {
         stopTicker()
+        if (appState.settings.value.sounds) Sounds.stop()
         _pill.value = buildPill(PillPhase.Processing)
         val createdAt = System.currentTimeMillis()
         val durationMs = createdAt - recordingStartMs
