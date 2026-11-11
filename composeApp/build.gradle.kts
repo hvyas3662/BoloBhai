@@ -54,6 +54,20 @@ compose.desktop {
             packageName = "Bolo Bhai"
             packageVersion = "1.0.0"
             vendor = "Bolo Bhai"
+            description = "Local offline Hinglish voice dictation"
+
+            windows {
+                iconFile.set(project.rootProject.file("resources/icons/image_94bc1ad5 1.ico"))
+                menuGroup = "Bolo Bhai"
+                perUserInstall = true
+                shortcut = true
+                // Stable UUID so upgrades replace the previous install.
+                upgradeUuid = "4b1d6f8e-9c2a-4e37-9a1e-7c2b3d4e5f60"
+            }
+            macOS {
+                iconFile.set(project.rootProject.file("resources/icons/amqh1-fc9m6.icns"))
+                bundleID = "com.elevationsoft.bolobhai.app"
+            }
         }
     }
 }
