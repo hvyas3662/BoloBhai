@@ -101,19 +101,33 @@ class HotkeyStateMachineTest {
     // --- Digits while recording ---
 
     @Test
-    fun digit_assignedSlot_switches_andSwallows() {
+    fun digit_inHold_swallows_butNoSwitch() {
+        // While a key is held, digits do not switch the profile (only double-tap does).
         val m = sm(assigned = setOf(3))
         m.onEvent(KeyDown, 0)
         val r = m.onEvent(Digit(3), 50)
+        assertTrue(r.effects.isEmpty())
+        assertTrue(r.swallow)
+    }
+
+    @Test
+    fun digit_inHandsFree_assignedSlot_switches_andSwallows() {
+        val m = sm(assigned = setOf(3))
+        m.onEvent(KeyDown, 0)          // HoldDown
+        m.onEvent(KeyUp, 50)           // TapWait (short)
+        m.onEvent(KeyDown, 80)         // HandsFree
+        val r = m.onEvent(Digit(3), 120)
         assertEquals(listOf(SwitchSlot(3)), r.effects)
         assertTrue(r.swallow)
     }
 
     @Test
-    fun digit_emptySlot_swallows_butNoSwitch() {
+    fun digit_inHandsFree_emptySlot_swallows_butNoSwitch() {
         val m = sm(assigned = setOf(1))
         m.onEvent(KeyDown, 0)
-        val r = m.onEvent(Digit(5), 50)
+        m.onEvent(KeyUp, 50)
+        m.onEvent(KeyDown, 80)
+        val r = m.onEvent(Digit(5), 120)
         assertTrue(r.effects.isEmpty())
         assertTrue(r.swallow)
     }

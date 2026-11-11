@@ -57,18 +57,14 @@ fun OnboardingScreen(appState: AppState, models: ModelsController, hotkeyLabel: 
 
     val modelRows by models.models.collectAsState()
     val defaults = modelRows.filter { it.entry.default }
-    val modelsReady = defaults.isNotEmpty() && defaults.all { it.state == ModelState.Installed }
 
     var micOk by remember { mutableStateOf(false) }
     LaunchedEffect(step) {
         while (step == 1) { micOk = AudioRecorder.inputDevices().isNotEmpty(); delay(1000) }
     }
 
-    val canContinue = when (step) {
-        1 -> micOk
-        3 -> modelsReady
-        else -> true
-    }
+    // Never trap the user: you can always continue (models can finish later, from the Models screen).
+    val canContinue = true
 
     Box(Modifier.fillMaxSize().background(c.bg), contentAlignment = Alignment.TopCenter) {
         Column(
@@ -188,9 +184,15 @@ private fun ModelsStep(defaults: List<com.bolobhai.app.ModelUi>, controller: Mod
             }
         }
     }
-    BoloButton("Download ${formatBytes(total)}", variant = ButtonVariant.Primary, enabled = enoughDisk, onClick = {
-        defaults.filter { it.state != ModelState.Installed }.forEach { controller.download(it.entry) }
-    })
+    val anyDownloading = defaults.any { it.downloading }
+    val allInstalled = defaults.isNotEmpty() && defaults.all { it.state == ModelState.Installed }
+    when {
+        allInstalled -> Text("All models ready · SHA-256 verified.", style = Bolo.type.bodyMedium, color = Bolo.colors.green)
+        anyDownloading -> BoloButton("Pause", onClick = { defaults.filter { it.downloading }.forEach { controller.pause(it.entry) } })
+        else -> BoloButton("Download ${formatBytes(total)}", variant = ButtonVariant.Primary, enabled = enoughDisk, onClick = {
+            defaults.filter { it.state != ModelState.Installed }.forEach { controller.download(it.entry) }
+        })
+    }
 }
 
 @Composable

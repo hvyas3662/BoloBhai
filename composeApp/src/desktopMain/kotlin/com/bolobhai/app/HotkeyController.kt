@@ -101,6 +101,11 @@ class HotkeyController(
         appState.toast("Re-processed with ${profile.name} · saved as v${(updated?.currentVersion ?: 0) + 1}")
     }
 
+    /** Pill Retry (§8): re-run the most recent (just-failed) dictation. */
+    fun retryLast() {
+        scope.launch { appState.history.value.firstOrNull()?.let { retry(it) } }
+    }
+
     /** §9 failed-card Retry — re-run the same profile; on success mark ok and copy to clipboard. */
     suspend fun retry(item: Dictation) {
         val profile = profileOf(item.current?.profileId) ?: run { appState.toast("No profile to retry"); return }

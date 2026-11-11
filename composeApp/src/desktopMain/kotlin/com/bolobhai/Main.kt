@@ -214,6 +214,7 @@ fun main() = application {
             systemDark = appState.systemDark,
             onStop = { controller.onInput(HotkeyInput.KeyDown) },
             onCancel = { controller.onInput(HotkeyInput.Esc) },
+            onRetry = { controller.retryLast() },
         )
     }
 }

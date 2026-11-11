@@ -72,7 +72,9 @@ class HotkeyStateMachine(
                 state = State.TapWait
                 none(HotkeyEffect.StartDoubleTapTimer)
             }
-        is HotkeyInput.Digit -> digit(input.n)
+        // §profile-switch: only in hands-free. While a key is held, digits are swallowed but do
+        // nothing (you're holding Alt/fn — switching belongs to double-tap mode).
+        is HotkeyInput.Digit -> swallowNoOp()
         is HotkeyInput.Esc -> cancel()
         else -> ignore() // key-repeat KeyDown etc.
     }
@@ -87,7 +89,7 @@ class HotkeyStateMachine(
             state = State.Idle
             none(HotkeyEffect.Discard("Too short · hold to talk, or double-tap for hands-free"))
         }
-        is HotkeyInput.Digit -> digit(input.n)
+        is HotkeyInput.Digit -> swallowNoOp()
         is HotkeyInput.Esc -> cancel()
         else -> ignore()
     }
@@ -139,6 +141,8 @@ class HotkeyStateMachine(
         val effects = if (slotAssigned(n)) listOf(HotkeyEffect.SwitchSlot(n)) else emptyList()
         return HotkeyResult(effects, swallow = true)
     }
+
+    private fun swallowNoOp() = HotkeyResult(emptyList(), swallow = true)
 
     private fun none(vararg effects: HotkeyEffect) = HotkeyResult(effects.toList(), swallow = false)
 

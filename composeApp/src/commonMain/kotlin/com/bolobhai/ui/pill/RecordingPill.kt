@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.bolobhai.domain.formatTimer
 import com.bolobhai.ui.components.BoloIcons
 import com.bolobhai.ui.components.SlotKey
+import com.bolobhai.ui.components.SlotKeyVisual
 import com.bolobhai.ui.theme.Bolo
 import com.bolobhai.ui.theme.BoloShapes
 
@@ -85,8 +86,8 @@ private fun RecordingContent(state: PillUiState, onStop: () -> Unit, onCancel: (
         style = Bolo.type.monoSmall,
         color = c.muted,
     )
-    Divider()
-    SlotRow(state)
+    // Profile switcher only in hands-free (you can't press 1–5 while holding the key).
+    if (state.phase == PillPhase.HandsFree) SlotSection(state)
     ProfileName(state.profileShort)
     if (state.phase == PillPhase.HandsFree) {
         CircleButton(c.blue, c.onAccent, BoloIcons.Mic, "Stop and process", onStop)
@@ -99,8 +100,6 @@ private fun ProcessingContent(state: PillUiState) {
     val c = Bolo.colors
     CircularProgressIndicator(modifier = Modifier.size(14.dp), color = c.blue, strokeWidth = 2.dp)
     Text("Processing", style = Bolo.type.monoSmall, color = c.muted)
-    Divider()
-    SlotRow(state)
     ProfileName(state.profileShort)
 }
 
@@ -112,8 +111,6 @@ private fun PastedContent(state: PillUiState) {
     }
     Text("Pasted", style = Bolo.type.monoSmall, color = c.text)
     Text(state.pasteShortcut, style = Bolo.type.monoSmall, color = c.muted)
-    Divider()
-    SlotRow(state)
     ProfileName(state.profileShort)
 }
 
@@ -168,11 +165,14 @@ private fun Divider() {
     Box(Modifier.size(1.dp, 22.dp).background(Bolo.colors.border))
 }
 
+/** Divider + the assigned slot keys; renders nothing when no slot holds a profile. */
 @Composable
-private fun SlotRow(state: PillUiState) {
+private fun SlotSection(state: PillUiState) {
+    if (state.slots.none { it != SlotKeyVisual.Empty }) return
+    Divider()
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         state.slots.forEachIndexed { i, visual ->
-            SlotKey(number = i + 1, visual = visual, sizeDp = 24.dp)
+            if (visual != SlotKeyVisual.Empty) SlotKey(number = i + 1, visual = visual, sizeDp = 24.dp)
         }
     }
 }
