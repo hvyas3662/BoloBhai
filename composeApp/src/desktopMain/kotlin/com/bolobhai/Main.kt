@@ -17,6 +17,7 @@ import androidx.compose.ui.window.rememberWindowState
 import com.bolobhai.app.AppState
 import com.bolobhai.app.HotkeyController
 import com.bolobhai.app.Screen
+import com.bolobhai.data.DictionaryRepo
 import com.bolobhai.data.FileSettingsRepo
 import com.bolobhai.data.HistoryRepo
 import com.bolobhai.data.ProfilesRepo
@@ -43,6 +44,7 @@ fun main() = application {
             systemDark = true,
             profilesRepo = ProfilesRepo(profilesDir),
             historyRepo = HistoryRepo(platform.appDataRoot().resolve("history.db")),
+            dictionaryRepo = DictionaryRepo(platform.appDataRoot().resolve("dictionary.yaml")),
         )
     }
     val appScope = rememberCoroutineScope()

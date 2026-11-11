@@ -7,8 +7,10 @@ import com.bolobhai.domain.HotkeyInput
 import com.bolobhai.domain.HotkeyStateMachine
 import com.bolobhai.domain.Profile
 import com.bolobhai.domain.RecMode
+import com.bolobhai.domain.applyCorrections
 import com.bolobhai.domain.capitalizeFirst
 import com.bolobhai.domain.cleanupLlmOutput
+import com.bolobhai.domain.whisperPrompt
 import com.bolobhai.domain.shortProfileName
 import com.bolobhai.sidecar.LlamaClient
 import com.bolobhai.sidecar.ProcessSupervisor
@@ -114,12 +116,14 @@ class HotkeyController(
             appState.toast("Speech engine not installed"); return
         }
         appState.toast("Re-transcribing with Whisper…")
-        val raw = try {
-            whisper.transcribe(Files.readAllBytes(Path.of(path)), appState.settings.value.language, prompt = "")
+        val dict = appState.dictionary.value
+        val transcript = try {
+            whisper.transcribe(Files.readAllBytes(Path.of(path)), appState.settings.value.language, prompt = whisperPrompt(dict))
         } catch (_: Exception) {
             appState.toast("Couldn't transcribe"); return
         }
-        if (raw.isBlank()) { appState.toast("Didn't catch that"); return }
+        if (transcript.isBlank()) { appState.toast("Didn't catch that"); return }
+        val raw = applyCorrections(transcript, dict)
         appState.setRawTranscript(item.id, raw)
         val profile = activeProfile()
         val version = if (profile != null && appState.settings.value.postProcessing) {
@@ -194,9 +198,10 @@ class HotkeyController(
                 return@launch
             }
             val settings = appState.settings.value
+            val dict = appState.dictionary.value
             val wav = pcm16ToWav(pcm)
             val transcript = try {
-                whisper.transcribe(wav, settings.language, prompt = "")
+                whisper.transcribe(wav, settings.language, prompt = whisperPrompt(dict))
             } catch (_: Exception) {
                 // §9 whisper failed -> nothing pasted, audio kept, History status stt_failed.
                 save(wav, createdAt, durationMs, raw = "", status = "stt_failed",
@@ -208,8 +213,7 @@ class HotkeyController(
                 finishToast("Didn't catch that")
                 return@launch
             }
-            // Dictionary corrections land in M5; the raw transcript is the "corrected" text for now.
-            val corrected = transcript
+            val corrected = applyCorrections(transcript, dict)
             val profile = activeProfile()
 
             if (settings.postProcessing && profile != null && llamaSupervisor.status.value == SidecarStatus.Ready) {

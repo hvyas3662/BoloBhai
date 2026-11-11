@@ -1,6 +1,8 @@
 package com.bolobhai.app
 
 import com.bolobhai.data.Dictation
+import com.bolobhai.data.Dictionary
+import com.bolobhai.data.DictionaryRepo
 import com.bolobhai.data.HistoryRepo
 import com.bolobhai.data.NewVersion
 import com.bolobhai.data.ProfilesRepo
@@ -30,12 +32,16 @@ class AppState(
     val systemDark: Boolean,
     private val profilesRepo: ProfilesRepo? = null,
     private val historyRepo: HistoryRepo? = null,
+    private val dictionaryRepo: DictionaryRepo? = null,
 ) {
     private val _settings = MutableStateFlow(settingsRepo.load())
     val settings: StateFlow<Settings> = _settings.asStateFlow()
 
     private val _history = MutableStateFlow<List<Dictation>>(emptyList())
     val history: StateFlow<List<Dictation>> = _history.asStateFlow()
+
+    private val _dictionary = MutableStateFlow(dictionaryRepo?.load() ?: Dictionary())
+    val dictionary: StateFlow<Dictionary> = _dictionary.asStateFlow()
 
     private val _profiles = MutableStateFlow<List<Profile>>(emptyList())
     val profiles: StateFlow<List<Profile>> = _profiles.asStateFlow()
@@ -117,6 +123,11 @@ class AppState(
     }
 
     fun setPostProcessing(enabled: Boolean) = persist { it.copy(postProcessing = enabled) }
+
+    fun saveDictionary(dict: Dictionary) {
+        _dictionary.value = dict
+        dictionaryRepo?.save(dict)
+    }
 
     /** (Re)load all dictations from the history store (call once at startup). */
     fun loadHistory() {
