@@ -54,6 +54,11 @@ class AppState(
     fun toast(message: String) { _toast.value = message }
     fun clearToast() { _toast.value = null }
 
+    /** LLM/whisper History actions, wired by the desktop controller which owns the sidecars. */
+    var reprocessOp: (suspend (Dictation, Profile) -> Unit)? = null
+    var retranscribeOp: (suspend (Dictation) -> Unit)? = null
+    var retryOp: (suspend (Dictation) -> Unit)? = null
+
     private val _theme = MutableStateFlow(themeModeOf(_settings.value.theme))
     val theme: StateFlow<ThemeMode> = _theme.asStateFlow()
 
@@ -141,6 +146,41 @@ class AppState(
         )
         loadHistory()
         return item
+    }
+
+    /** Append a re-processed/re-transcribed version (becomes current) and refresh. */
+    fun addVersion(historyId: Long, version: NewVersion): Dictation? {
+        val item = historyRepo?.addVersion(historyId, version)
+        loadHistory()
+        return item
+    }
+
+    fun setStatus(historyId: Long, status: String) {
+        historyRepo?.updateStatus(historyId, status)
+        loadHistory()
+    }
+
+    fun setRawTranscript(historyId: Long, raw: String) {
+        historyRepo?.updateRaw(historyId, raw)
+        loadHistory()
+    }
+
+    /** Delete one dictation and its audio file (BoloBhai.md §13.1 More menu). */
+    fun deleteDictation(id: Long) {
+        deleteAudioFiles(listOfNotNull(historyRepo?.delete(id)))
+        loadHistory()
+        toast("Deleted")
+    }
+
+    /** Clear all history and audio (BoloBhai.md §13.6 danger action). */
+    fun clearHistory() {
+        deleteAudioFiles(historyRepo?.clearAll().orEmpty())
+        loadHistory()
+        toast("History cleared")
+    }
+
+    private fun deleteAudioFiles(paths: List<String>) {
+        paths.forEach { runCatching { java.nio.file.Files.deleteIfExists(java.nio.file.Path.of(it)) } }
     }
 
     private fun persist(transform: (Settings) -> Settings) {

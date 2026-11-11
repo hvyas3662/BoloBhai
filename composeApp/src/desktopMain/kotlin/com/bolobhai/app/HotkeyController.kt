@@ -14,6 +14,7 @@ import com.bolobhai.sidecar.LlamaClient
 import com.bolobhai.sidecar.ProcessSupervisor
 import com.bolobhai.sidecar.SidecarStatus
 import com.bolobhai.sidecar.WhisperClient
+import com.bolobhai.data.Dictation
 import com.bolobhai.data.NewVersion
 import com.bolobhai.ui.components.slotKeyVisual
 import com.bolobhai.ui.pill.PillPhase
@@ -29,6 +30,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import java.net.ServerSocket
 import java.nio.file.Files
 import java.nio.file.Path
@@ -85,6 +88,65 @@ class HotkeyController(
     fun startSidecars() {
         scope.launch { whisperSupervisor.start() }
         scope.launch { llamaSupervisor.start() }
+    }
+
+    /** §13.1 More menu — re-run the LLM on an item's raw transcript, saved as a new version. */
+    suspend fun reprocess(item: Dictation, profile: Profile) {
+        val out = runLlm(profile, item.rawTranscript) ?: run { appState.toast("Re-process failed"); return }
+        val updated = appState.addVersion(item.id, llmVersion(profile, out))
+        appState.toast("Re-processed with ${profile.name} · saved as v${(updated?.currentVersion ?: 0) + 1}")
+    }
+
+    /** §9 failed-card Retry — re-run the same profile; on success mark ok and copy to clipboard. */
+    suspend fun retry(item: Dictation) {
+        val profile = profileOf(item.current?.profileId) ?: run { appState.toast("No profile to retry"); return }
+        val out = runLlm(profile, item.rawTranscript) ?: run { appState.toast("Still failing · raw text kept"); return }
+        appState.addVersion(item.id, llmVersion(profile, out))
+        appState.setStatus(item.id, "ok")
+        copyToClipboard(out)
+        appState.toast("Cleaned up · copied to clipboard")
+    }
+
+    /** §13.1 More menu — re-transcribe the kept audio, then re-run the active profile. */
+    suspend fun retranscribe(item: Dictation) {
+        val path = item.audioPath ?: run { appState.toast("Audio isn't kept for this item"); return }
+        if (whisperSupervisor.status.value != SidecarStatus.Ready) {
+            appState.toast("Speech engine not installed"); return
+        }
+        appState.toast("Re-transcribing with Whisper…")
+        val raw = try {
+            whisper.transcribe(Files.readAllBytes(Path.of(path)), appState.settings.value.language, prompt = "")
+        } catch (_: Exception) {
+            appState.toast("Couldn't transcribe"); return
+        }
+        if (raw.isBlank()) { appState.toast("Didn't catch that"); return }
+        appState.setRawTranscript(item.id, raw)
+        val profile = activeProfile()
+        val version = if (profile != null && appState.settings.value.postProcessing) {
+            runLlm(profile, raw)?.let { llmVersion(profile, it) }
+                ?: NewVersion(profile.fileName, profile.name, capitalizeFirst(raw), null, null)
+        } else {
+            NewVersion(null, "Raw (no LLM)", capitalizeFirst(raw), null, null)
+        }
+        appState.addVersion(item.id, version)
+        appState.toast("Re-transcribed · dictionary applied")
+    }
+
+    /** Run the profile's prompt with the 15 s timeout; null on timeout/error/empty/not-ready. */
+    private suspend fun runLlm(profile: Profile, text: String): String? {
+        if (llamaSupervisor.status.value != SidecarStatus.Ready) return null
+        val raw = withTimeoutOrNull(15_000) { llama.complete(profile.body, text) } ?: return null
+        return cleanupLlmOutput(raw).takeIf { it.isNotBlank() }
+    }
+
+    private fun llmVersion(profile: Profile, output: String) =
+        NewVersion(profile.fileName, profile.name, output, appState.settings.value.activeLlmModel, null)
+
+    private fun profileOf(fileName: String?): Profile? =
+        fileName?.let { f -> appState.profiles.value.firstOrNull { it.fileName == f } }
+
+    private fun copyToClipboard(text: String) {
+        Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
     }
 
     fun isRecording(): Boolean = sm.state in RECORDING_STATES

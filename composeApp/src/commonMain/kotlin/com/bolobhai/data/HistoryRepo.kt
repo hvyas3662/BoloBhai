@@ -150,6 +150,24 @@ class HistoryRepo(dbPath: Path) {
         return get(historyId)!!
     }
 
+    /** Replace the raw transcript (re-transcribe) and refresh the FTS row. */
+    fun updateRaw(historyId: Long, raw: String) {
+        conn.prepareStatement("UPDATE history SET raw_transcript=? WHERE id=?").use { ps ->
+            ps.setString(1, raw)
+            ps.setLong(2, historyId)
+            ps.executeUpdate()
+        }
+        syncFts(historyId)
+    }
+
+    fun updateStatus(historyId: Long, status: String) {
+        conn.prepareStatement("UPDATE history SET status=? WHERE id=?").use { ps ->
+            ps.setString(1, status)
+            ps.setLong(2, historyId)
+            ps.executeUpdate()
+        }
+    }
+
     fun list(): List<Dictation> = query("SELECT * FROM history ORDER BY created_at DESC, id DESC")
 
     fun search(queryText: String): List<Dictation> {

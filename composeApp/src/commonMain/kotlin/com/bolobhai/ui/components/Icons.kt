@@ -70,4 +70,12 @@ object BoloIcons {
         "Moon",
         "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z",
     )
+    val Play = strokeIcon(
+        "Play",
+        "M6 3v18l15-9z",
+    )
+    val Pause = strokeIcon(
+        "Pause",
+        "M8 4v16 M16 4v16",
+    )
 }

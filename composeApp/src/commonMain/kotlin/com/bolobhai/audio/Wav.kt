@@ -31,6 +31,31 @@ fun pcm16ToWav(pcm: ByteArray, sampleRate: Int = 16000, channels: Int = 1): Byte
     }.toByteArray()
 }
 
+/**
+ * PCM data chunk of a canonical WAV produced by [pcm16ToWav].
+ * shortcut: assumes the fixed 44-byte header; replace with real chunk parsing if we ever read
+ * foreign WAV files.
+ */
+fun wavData(wav: ByteArray): ByteArray =
+    if (wav.size <= 44) ByteArray(0) else wav.copyOfRange(44, wav.size)
+
+/**
+ * [bars] amplitude bars (0.0..1.0) for a waveform strip (BoloBhai.md §13.1): split the PCM16 into
+ * equal buckets, take each bucket's RMS, normalize by the loudest bucket.
+ */
+fun waveformBars(pcm: ByteArray, bars: Int = 48): List<Float> {
+    val samples = pcm.size / 2
+    if (samples == 0 || bars <= 0) return List(bars.coerceAtLeast(0)) { 0f }
+    val perBar = (samples / bars).coerceAtLeast(1)
+    val raw = (0 until bars).map { b ->
+        val start = (b * perBar * 2).coerceAtMost(pcm.size)
+        val end = ((b + 1) * perBar * 2).coerceAtMost(pcm.size)
+        if (start >= end) 0.0 else rms16(pcm.copyOfRange(start, end))
+    }
+    val max = raw.maxOrNull() ?: 0.0
+    return if (max <= 0.0) List(bars) { 0f } else raw.map { (it / max).toFloat() }
+}
+
 /** RMS level of little-endian PCM16 samples, normalized to 0.0..1.0 (for the live waveform). */
 fun rms16(pcm: ByteArray): Double {
     if (pcm.size < 2) return 0.0

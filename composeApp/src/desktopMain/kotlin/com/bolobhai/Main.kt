@@ -80,6 +80,9 @@ fun main() = application {
 
     // Load profiles (+ defaults), watch for external edits, and start sidecars once.
     LaunchedEffect(Unit) {
+        appState.reprocessOp = controller::reprocess
+        appState.retranscribeOp = controller::retranscribe
+        appState.retryOp = controller::retry
         appState.initProfiles()
         appState.loadHistory()
         watcher.start { appState.reloadProfiles() }

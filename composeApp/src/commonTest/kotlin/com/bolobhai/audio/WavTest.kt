@@ -38,6 +38,35 @@ class WavTest {
     }
 
     @Test
+    fun waveformBars_count_and_normalization() {
+        // Louder first half, quieter second half.
+        val pcm = ByteArray(48 * 100 * 2)
+        for (i in 0 until pcm.size / 2) {
+            val loud = i < pcm.size / 4
+            val v = if (loud) 0x4000 else 0x0400
+            pcm[i * 2] = (v and 0xFF).toByte()
+            pcm[i * 2 + 1] = (v shr 8).toByte()
+        }
+        val bars = waveformBars(pcm, 48)
+        assertEquals(48, bars.size)
+        assertTrue(bars.all { it in 0f..1f })
+        assertTrue(bars.max() in 0.99f..1.01f)      // normalized to the loudest bucket
+        assertTrue(bars.first() > bars.last())       // loud half louder than quiet half
+    }
+
+    @Test
+    fun waveformBars_silence_isAllZero() {
+        assertTrue(waveformBars(ByteArray(48 * 4), 48).all { it == 0f })
+    }
+
+    @Test
+    fun wavData_stripsHeader() {
+        val wav = pcm16ToWav(ByteArray(20) { 7 })
+        assertEquals(20, wavData(wav).size)
+        assertEquals(7.toByte(), wavData(wav)[0])
+    }
+
+    @Test
     fun rms_silence_isZero() {
         assertEquals(0.0, rms16(ByteArray(64)), 1e-9)
     }

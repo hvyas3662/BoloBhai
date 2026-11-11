@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,21 +45,30 @@ import com.bolobhai.domain.groupByDay
 import com.bolobhai.domain.profileCounts
 import com.bolobhai.domain.queryMatches
 import com.bolobhai.domain.rawCount
+import com.bolobhai.domain.Profile
+import com.bolobhai.ui.components.AudioPlayerBar
 import com.bolobhai.ui.components.BoloButton
 import com.bolobhai.ui.components.ButtonVariant
 import com.bolobhai.ui.theme.Bolo
 import com.bolobhai.ui.theme.BoloShapes
+import kotlinx.coroutines.launch
+import java.awt.FileDialog
+import java.awt.Frame
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
+import java.io.File
+import java.nio.file.Files
 
 /** History home (BoloBhai.md §13.1): search + filter chips over day-grouped dictation cards. */
 @Composable
 fun HistoryScreen(appState: AppState) {
     val items by appState.history.collectAsState()
     val settings by appState.settings.collectAsState()
+    val profiles by appState.profiles.collectAsState()
 
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf<HistoryFilter>(HistoryFilter.All) }
+    var playingId by remember { mutableStateOf<Long?>(null) }
     // Filter resets to All when a new dictation lands (§13.1).
     LaunchedEffect(items.size) { filter = HistoryFilter.All }
 
@@ -81,7 +94,10 @@ fun HistoryScreen(appState: AppState) {
                     "No dictations yet — Hold ${settings.hotkey.windows} anywhere and start speaking…",
                 )
                 filtered.isEmpty() -> Empty("Nothing matches — Try another word, or pick All above.")
-                else -> HistoryList(appState, filtered, settings)
+                else -> HistoryList(
+                    appState, filtered, settings, profiles, playingId,
+                    onTogglePlay = { id -> playingId = if (playingId == id) null else id },
+                )
             }
         }
     }
@@ -126,7 +142,14 @@ private fun Chip(label: String, count: Int, selected: Boolean, danger: Boolean =
 }
 
 @Composable
-private fun HistoryList(appState: AppState, items: List<Dictation>, settings: Settings) {
+private fun HistoryList(
+    appState: AppState,
+    items: List<Dictation>,
+    settings: Settings,
+    profiles: List<Profile>,
+    playingId: Long?,
+    onTogglePlay: (Long) -> Unit,
+) {
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 32.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -136,15 +159,26 @@ private fun HistoryList(appState: AppState, items: List<Dictation>, settings: Se
             item(key = "day-$label") {
                 Text(label, style = Bolo.type.sectionLabel, color = Bolo.colors.muted, modifier = Modifier.padding(top = 6.dp))
             }
-            items(dayItems, key = { it.id }) { HistoryCard(appState, it, settings) }
+            items(dayItems, key = { it.id }) {
+                HistoryCard(appState, it, settings, profiles, playing = playingId == it.id, onTogglePlay = { onTogglePlay(it.id) })
+            }
         }
     }
 }
 
 @Composable
-private fun HistoryCard(appState: AppState, item: Dictation, settings: Settings) {
+private fun HistoryCard(
+    appState: AppState,
+    item: Dictation,
+    settings: Settings,
+    profiles: List<Profile>,
+    playing: Boolean,
+    onTogglePlay: () -> Unit,
+) {
     val c = Bolo.colors
+    val scope = rememberCoroutineScope()
     val failed = item.status != "ok"
+    var showDeleteConfirm by remember(item.id) { mutableStateOf(false) }
     var selectedVersion by remember(item.id, item.currentVersion) { mutableStateOf(item.currentVersion) }
     var expanded by remember(item.id) { mutableStateOf(false) }
     var showOriginal by remember(item.id) { mutableStateOf(false) }
@@ -178,23 +212,105 @@ private fun HistoryCard(appState: AppState, item: Dictation, settings: Settings)
             modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
         )
 
-        if (failed) {
+        if (failed && item.status == "llm_failed") {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("ⓘ Post-processing failed · raw transcript was pasted", style = Bolo.type.meta, color = c.red)
+                BoloButton("Retry", variant = ButtonVariant.Danger, onClick = {
+                    scope.launch { appState.retryOp?.invoke(item) }
+                })
             }
         }
 
         if (showOriginal) OriginalPanel(appState, item.rawTranscript)
 
+        if (playing && item.audioPath != null) AudioPlayerBar(item.audioPath!!)
+
         // Action row.
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             BoloButton("Copy output", onClick = {
                 copyToClipboard(version?.output.orEmpty())
                 appState.toast("Copied output")
             })
             BoloButton(if (showOriginal) "Hide original" else "Show original", onClick = { showOriginal = !showOriginal })
+            if (item.audioPath != null) {
+                BoloButton(if (playing) "Pause" else "Play audio", onClick = onTogglePlay)
+            }
+            Box(Modifier.weight(1f))
+            MoreMenu(appState, item, profiles, scope, onDeleteRequest = { showDeleteConfirm = true })
         }
     }
+
+    if (showDeleteConfirm) {
+        ConfirmDialog(
+            text = "Delete this dictation? The output, original transcript, all versions and the audio file will be removed.",
+            onConfirm = { appState.deleteDictation(item.id); showDeleteConfirm = false },
+            onDismiss = { showDeleteConfirm = false },
+        )
+    }
+}
+
+@Composable
+private fun MoreMenu(
+    appState: AppState,
+    item: Dictation,
+    profiles: List<Profile>,
+    scope: kotlinx.coroutines.CoroutineScope,
+    onDeleteRequest: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    var reprocessOpen by remember { mutableStateOf(false) }
+    Box {
+        BoloButton("⋯ More", variant = ButtonVariant.Ghost, onClick = { open = true })
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text("Re-process with profile ▸") },
+                onClick = { reprocessOpen = !reprocessOpen },
+            )
+            if (reprocessOpen) profiles.forEach { p ->
+                DropdownMenuItem(
+                    text = { Text("   ${p.name}") },
+                    onClick = { open = false; scope.launch { appState.reprocessOp?.invoke(item, p) } },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text("Re-transcribe audio") },
+                enabled = item.audioPath != null,
+                onClick = { open = false; scope.launch { appState.retranscribeOp?.invoke(item) } },
+            )
+            DropdownMenuItem(
+                text = { Text("Save audio as .wav") },
+                enabled = item.audioPath != null,
+                onClick = { open = false; saveWav(appState, item) },
+            )
+            DropdownMenuItem(
+                text = { Text("Delete item", color = Bolo.colors.red) },
+                onClick = { open = false; onDeleteRequest() },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConfirmDialog(text: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { BoloButton("Delete", variant = ButtonVariant.Danger, onClick = onConfirm) },
+        dismissButton = { BoloButton("Cancel", onClick = onDismiss) },
+        text = { Text(text, style = Bolo.type.body, color = Bolo.colors.text) },
+    )
+}
+
+/** Native save dialog; copies the stored WAV to the chosen location (default `bolobhai-{id}.wav`). */
+private fun saveWav(appState: AppState, item: Dictation) {
+    val source = item.audioPath ?: return
+    val dialog = FileDialog(null as Frame?, "Save audio", FileDialog.SAVE).apply {
+        file = "bolobhai-${item.id}.wav"
+        isVisible = true
+    }
+    val dir = dialog.directory ?: return
+    val name = dialog.file ?: return
+    Files.copy(File(source).toPath(), File(dir, name).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    appState.toast("Saved $name")
 }
 
 @Composable
