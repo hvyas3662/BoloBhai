@@ -32,6 +32,7 @@ import com.bolobhai.platform.currentPlatform
 import com.bolobhai.platform.win.WinKeyboardHook
 import com.bolobhai.platform.win.WinPaster
 import com.bolobhai.platform.win.dictationKeyFromSetting
+import com.bolobhai.ui.OnboardingScreen
 import com.bolobhai.ui.Shell
 import com.bolobhai.ui.components.BoloIcons
 import com.bolobhai.ui.pill.PillWindow
@@ -150,7 +151,11 @@ fun main() = application {
     ) {
         window.minimumSize = java.awt.Dimension(1100, 700)
         BoloTheme(mode = theme, systemDark = appState.systemDark) {
-            Shell(appState, hotkeyLabel, modelsController)
+            if (settings.onboardingDone) {
+                Shell(appState, hotkeyLabel, modelsController)
+            } else {
+                OnboardingScreen(appState, modelsController, hotkeyLabel)
+            }
         }
     }
 
