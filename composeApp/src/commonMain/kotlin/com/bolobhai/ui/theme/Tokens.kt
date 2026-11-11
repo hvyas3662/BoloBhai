@@ -11,6 +11,19 @@ fun resolveDark(mode: ThemeMode, systemDark: Boolean): Boolean = when (mode) {
     ThemeMode.System -> systemDark
 }
 
+/** Maps the persisted settings.theme string to a [ThemeMode] (unknown -> Dark). */
+fun themeModeOf(value: String): ThemeMode = when (value.lowercase()) {
+    "light" -> ThemeMode.Light
+    "system" -> ThemeMode.System
+    else -> ThemeMode.Dark
+}
+
+fun ThemeMode.asSettingValue(): String = when (this) {
+    ThemeMode.Dark -> "dark"
+    ThemeMode.Light -> "light"
+    ThemeMode.System -> "system"
+}
+
 /** The full Bolo Bhai color palette (BoloBhai.md §12.1). */
 data class BoloColors(
     val bg: Color,
