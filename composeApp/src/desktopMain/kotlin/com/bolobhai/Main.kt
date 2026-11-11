@@ -38,6 +38,9 @@ import kotlin.io.path.Path
 import com.bolobhai.platform.win.dictationKeyFromSetting
 import com.bolobhai.ui.OnboardingScreen
 import com.bolobhai.ui.Shell
+import com.bolobhai.resources.Res
+import com.bolobhai.resources.app_icon
+import org.jetbrains.compose.resources.painterResource
 import com.bolobhai.ui.components.BoloIcons
 import com.bolobhai.ui.pill.PillWindow
 import com.bolobhai.ui.theme.BoloTheme
@@ -191,6 +194,7 @@ fun main() = application {
         visible = windowVisible,
         state = windowState,
         title = "Bolo Bhai",
+        icon = painterResource(Res.drawable.app_icon),
     ) {
         window.minimumSize = java.awt.Dimension(1100, 700)
         BoloTheme(mode = theme, systemDark = appState.systemDark) {

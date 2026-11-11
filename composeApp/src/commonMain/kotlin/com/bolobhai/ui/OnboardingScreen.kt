@@ -1,18 +1,27 @@
 package com.bolobhai.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LinearProgressIndicator
+import org.jetbrains.compose.resources.painterResource
+import com.bolobhai.resources.Res
+import com.bolobhai.resources.app_icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,36 +70,52 @@ fun OnboardingScreen(appState: AppState, models: ModelsController, hotkeyLabel: 
         else -> true
     }
 
-    Column(Modifier.fillMaxSize().background(c.bg).padding(32.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Bolo Bhai setup", style = Bolo.type.h2, color = c.text)
-            BoloButton("Skip for now", variant = ButtonVariant.Ghost, onClick = { finish(appState) })
-        }
-        // 5-segment progress bar.
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            steps.forEachIndexed { i, _ ->
-                Box(Modifier.weight(1f).height(6.dp).clip(BoloShapes.pill).background(if (i <= step) c.blue else c.card2))
+    Box(Modifier.fillMaxSize().background(c.bg), contentAlignment = Alignment.TopCenter) {
+        Column(
+            Modifier.widthIn(max = 880.dp).fillMaxSize().padding(horizontal = 32.dp, vertical = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painterResource(Res.drawable.app_icon), contentDescription = "Bolo Bhai",
+                    modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)),
+                )
+                Text("  Bolo Bhai setup", style = Bolo.type.h2, color = c.text)
+                Spacer(Modifier.weight(1f))
+                BoloButton("Skip for now", variant = ButtonVariant.Ghost, onClick = { finish(appState) })
             }
-        }
-
-        Box(Modifier.weight(1f).fillMaxWidth().widthIn(max = 820.dp).clip(BoloShapes.panelLarge).background(c.card)
-            .border(1.dp, c.border, BoloShapes.panelLarge).padding(32.dp)) {
-            when (step) {
-                0 -> Welcome()
-                1 -> Permissions(micOk)
-                2 -> HotkeyStep(hotkeyLabel)
-                3 -> ModelsStep(defaults, models)
-                4 -> Ready()
+            // 5-segment progress bar with step labels.
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    steps.forEachIndexed { i, _ ->
+                        Box(Modifier.weight(1f).height(6.dp).clip(BoloShapes.pill).background(if (i <= step) c.blue else c.card2))
+                    }
+                }
+                Text("${step + 1}. ${steps[step]}", style = Bolo.type.meta, color = c.muted)
             }
-        }
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (step > 0) BoloButton("Back", onClick = { step-- })
-            Box(Modifier.weight(1f))
-            if (step < 4) {
-                BoloButton("Continue", variant = ButtonVariant.Primary, enabled = canContinue, onClick = { step++ })
-            } else {
-                BoloButton("Start dictating", variant = ButtonVariant.Primary, onClick = { finish(appState) })
+            Box(
+                Modifier.weight(1f).fillMaxWidth().clip(BoloShapes.panelLarge).background(c.card)
+                    .border(1.dp, c.border, BoloShapes.panelLarge).padding(36.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                when (step) {
+                    0 -> Welcome()
+                    1 -> Permissions(micOk)
+                    2 -> HotkeyStep(hotkeyLabel)
+                    3 -> ModelsStep(defaults, models)
+                    4 -> Ready()
+                }
+            }
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (step > 0) BoloButton("Back", onClick = { step-- })
+                Spacer(Modifier.weight(1f))
+                if (step < 4) {
+                    BoloButton("Continue", variant = ButtonVariant.Primary, enabled = canContinue, onClick = { step++ })
+                } else {
+                    BoloButton("Start dictating", variant = ButtonVariant.Primary, onClick = { finish(appState) })
+                }
             }
         }
     }
@@ -102,9 +127,18 @@ private fun finish(appState: AppState) {
 }
 
 @Composable
-private fun Welcome() = Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+private fun Welcome() = Column(
+    verticalArrangement = Arrangement.spacedBy(14.dp),
+    horizontalAlignment = Alignment.CenterHorizontally,
+    modifier = Modifier.fillMaxWidth(),
+) {
+    Image(
+        painterResource(Res.drawable.app_icon), contentDescription = "Bolo Bhai",
+        modifier = Modifier.size(96.dp).clip(RoundedCornerShape(20.dp)),
+    )
     Text("Bolo Bhai", style = Bolo.type.onboardingTitle, color = Bolo.colors.text)
     Text("Local, offline Hinglish voice dictation.", style = Bolo.type.body, color = Bolo.colors.muted)
+    Spacer(Modifier.height(4.dp))
     Tile("Speak Hinglish", "Hindi + English, written back in clean Roman letters.")
     Tile("Fully offline", "Whisper and the LLM run on this computer. No cloud, no paid API.")
     Tile("Profiles on 1–5", "Press 1–5 while recording to pick how your text is cleaned up.")

@@ -115,13 +115,13 @@ class WinKeyboardHook(
         up -> {
             dictationDown = false
             val swallow = onInput(HotkeyInput.KeyUp)
-            if (dictationKey == DictationKey.Alt && gestureActive && !altCombined) {
-                // Prevent the lone-Alt menu activation.
-                gestureActive = false
+            gestureActive = false
+            if (dictationKey == DictationKey.Alt && !altCombined) {
+                // Inject a dummy key so Windows treats Alt as a combo (no menu bar), then let the
+                // real Alt key-up PASS THROUGH — swallowing it would leave Alt logically stuck down.
                 WinPaste.injectHarmlessKey()
-                true
+                false
             } else {
-                gestureActive = false
                 swallow
             }
         }

@@ -4,6 +4,7 @@ import com.bolobhai.data.ModelEntry
 import com.bolobhai.data.ModelRepo
 import com.bolobhai.domain.ModelState
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,12 +48,15 @@ class ModelsController(
 
     fun download(entry: ModelEntry) {
         if (jobs.containsKey(entry.id)) return
-        jobs[entry.id] = scope.launch {
+        // Blocking HTTP download must run off the UI thread or progress never repaints.
+        jobs[entry.id] = scope.launch(Dispatchers.IO) {
             try {
                 repo.download(entry) { p -> progress[entry.id] = p; refresh() }
                 appState.toast("${entry.name} downloaded · SHA-256 verified")
-            } catch (_: Exception) {
-                // cancellation (pause) or network error — the .part is kept for resume.
+            } catch (_: kotlinx.coroutines.CancellationException) {
+                // Pause — the .part is kept for resume.
+            } catch (e: Exception) {
+                appState.toast("Download failed: ${e.message ?: "network error"}")
             } finally {
                 jobs.remove(entry.id); progress.remove(entry.id); refresh()
             }
