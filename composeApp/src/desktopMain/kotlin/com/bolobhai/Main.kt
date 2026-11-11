@@ -29,8 +29,12 @@ import com.bolobhai.domain.HotkeyInput
 import com.bolobhai.platform.LlamaLauncher
 import com.bolobhai.platform.WhisperLauncher
 import com.bolobhai.platform.currentPlatform
+import com.bolobhai.platform.mac.MacHelper
 import com.bolobhai.platform.win.WinKeyboardHook
 import com.bolobhai.platform.win.WinPaster
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
+import kotlin.io.path.Path
 import com.bolobhai.platform.win.dictationKeyFromSetting
 import com.bolobhai.ui.OnboardingScreen
 import com.bolobhai.ui.Shell
@@ -59,8 +63,10 @@ fun main() = application {
     val theme by appState.theme.collectAsState()
     val settings by appState.settings.collectAsState()
     val isWindows = platform.id == "windows"
+    val isMac = platform.id == "mac"
     val hotkeyLabel = if (isWindows) settings.hotkey.windows else settings.hotkey.mac
     val pasteShortcut = if (isWindows) "Ctrl+V" else "Cmd+V"
+    val macHelper = remember { MacHelper(macHelperBinary()) }
 
     val controller = remember {
         HotkeyController(
@@ -79,7 +85,14 @@ fun main() = application {
                     platform.appDataRoot().resolve("models").resolve(appState.settings.value.activeLlmModel),
                 )
             },
-            paste = if (isWindows) WinPaster::paste else { _ -> },
+            paste = when {
+                isWindows -> WinPaster::paste
+                isMac -> { text ->
+                    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+                    macHelper.paste()
+                }
+                else -> { _ -> }
+            },
             audioDir = audioDir,
         )
     }
@@ -98,6 +111,12 @@ fun main() = application {
         appState.runAudioRetention()
         watcher.start { appState.reloadProfiles() }
         controller.startSidecars()
+        // macOS: the Swift helper is our global key source; keep its capture flag in sync so it
+        // swallows 1–5/Esc only while recording (BoloBhai.md §6.4).
+        if (isMac) macHelper.start { ev ->
+            controller.onInput(ev)
+            macHelper.setCapture(controller.isRecording())
+        }
     }
     val hook = remember {
         if (isWindows) {
@@ -113,6 +132,9 @@ fun main() = application {
 
     // §6.0: closing the main window only hides it; the app keeps running and quits via the tray.
     var windowVisible by remember { mutableStateOf(true) }
+
+    // §4/§8: no Dock icon while the window is closed (accessory); regular while it's open.
+    LaunchedEffect(windowVisible) { if (isMac) macHelper.setActivationPolicy(windowVisible) }
 
     Tray(
         icon = rememberVectorPainter(BoloIcons.Mic),
@@ -136,6 +158,7 @@ fun main() = application {
             Separator()
             Item("Quit Bolo Bhai") {
                 hook?.stop()
+                macHelper.stop()
                 watcher.stop()
                 exitApplication()
             }
@@ -170,3 +193,10 @@ fun main() = application {
         )
     }
 }
+
+/** Bundled Swift helper path: `sidecars/mac-<arch>/bolobhai-mac-helper` (BoloBhai.md §17). */
+private fun macHelperBinary() = Path(
+    "sidecars",
+    if (System.getProperty("os.arch").lowercase().contains("aarch64")) "mac-arm64" else "mac-x64",
+    "bolobhai-mac-helper",
+)
