@@ -1,3 +1,6 @@
+# Skill precedence
+PL Coding Skills (android-*, kmp-*, design, pr-quiz) always take priority. When their architecture/patterns conflict with ponytail's minimalism, follow the PL skill's pattern even if it means more code. Ponytail applies only on top of that — trimming genuine bloat without breaking the prescribed pattern.
+
 # gstack
 Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
 
