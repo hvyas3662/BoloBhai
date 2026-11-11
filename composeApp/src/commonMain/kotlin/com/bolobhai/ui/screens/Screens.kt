@@ -15,12 +15,6 @@ fun AllProfilesScreen() = ScreenScaffold(
 ) { ComingSoon() }
 
 @Composable
-fun DictionaryScreen() = ScreenScaffold(
-    title = "Dictionary",
-    subtitle = "Custom words and corrections, applied before the LLM.",
-) { ComingSoon() }
-
-@Composable
 fun ModelsScreen() = ScreenScaffold(
     title = "Models",
     subtitle = "Everything runs on this computer. No cloud, no paid APIs.",

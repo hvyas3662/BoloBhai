@@ -71,7 +71,7 @@ private fun ContentHost(appState: AppState, screen: Screen) {
         Screen.History -> HistoryScreen(appState)
         Screen.QuickProfiles -> QuickProfilesScreen(appState)
         Screen.AllProfiles -> AllProfilesScreen()
-        Screen.Dictionary -> DictionaryScreen()
+        Screen.Dictionary -> DictionaryScreen(appState)
         Screen.Models -> ModelsScreen()
         Screen.Settings -> SettingsScreen()
     }
