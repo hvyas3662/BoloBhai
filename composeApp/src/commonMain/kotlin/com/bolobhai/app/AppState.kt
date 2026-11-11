@@ -1,7 +1,9 @@
 package com.bolobhai.app
 
+import com.bolobhai.data.ProfilesRepo
 import com.bolobhai.data.Settings
 import com.bolobhai.data.SettingsRepo
+import com.bolobhai.domain.Profile
 import com.bolobhai.ui.theme.ThemeMode
 import com.bolobhai.ui.theme.asSettingValue
 import com.bolobhai.ui.theme.themeModeOf
@@ -23,9 +25,17 @@ fun resolveActiveSlot(quickSlots: Map<String, String?>, requested: Int): Int {
 class AppState(
     private val settingsRepo: SettingsRepo,
     val systemDark: Boolean,
+    private val profilesRepo: ProfilesRepo? = null,
 ) {
     private val _settings = MutableStateFlow(settingsRepo.load())
     val settings: StateFlow<Settings> = _settings.asStateFlow()
+
+    private val _profiles = MutableStateFlow<List<Profile>>(emptyList())
+    val profiles: StateFlow<List<Profile>> = _profiles.asStateFlow()
+
+    /** Slot numbers cleared by the last reload because their file vanished (for a toast). */
+    private val _clearedSlots = MutableStateFlow<List<Int>>(emptyList())
+    val clearedSlots: StateFlow<List<Int>> = _clearedSlots.asStateFlow()
 
     private val _currentScreen = MutableStateFlow(Screen.History)
     val currentScreen: StateFlow<Screen> = _currentScreen.asStateFlow()
@@ -39,6 +49,26 @@ class AppState(
 
     fun navigateTo(screen: Screen) {
         _currentScreen.value = screen
+    }
+
+    /** Copy shipped defaults if the folder is empty, then load (call once at startup). */
+    fun initProfiles() {
+        profilesRepo?.ensureDefaults()
+        reloadProfiles()
+    }
+
+    /** (Re)load profiles from disk and clear any slot whose file disappeared (§11). */
+    fun reloadProfiles() {
+        val repo = profilesRepo ?: return
+        val list = repo.list()
+        _profiles.value = list
+        val reconcile = reconcileQuickSlots(_settings.value.quickSlots, list.map { it.fileName }.toSet())
+        _clearedSlots.value = reconcile.removed
+        if (reconcile.removed.isNotEmpty()) {
+            val resolved = resolveActiveSlot(reconcile.slots, _settings.value.activeSlot)
+            _activeSlot.value = resolved
+            persist { it.copy(quickSlots = reconcile.slots, activeSlot = resolved) }
+        }
     }
 
     fun setTheme(mode: ThemeMode) {

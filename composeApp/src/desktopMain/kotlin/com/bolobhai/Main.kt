@@ -5,6 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.DpSize
@@ -17,6 +18,8 @@ import com.bolobhai.app.AppState
 import com.bolobhai.app.HotkeyController
 import com.bolobhai.app.Screen
 import com.bolobhai.data.FileSettingsRepo
+import com.bolobhai.data.ProfilesRepo
+import com.bolobhai.data.ProfilesWatcher
 import com.bolobhai.domain.HotkeyInput
 import com.bolobhai.platform.WhisperLauncher
 import com.bolobhai.platform.currentPlatform
@@ -30,9 +33,16 @@ import com.bolobhai.ui.theme.BoloTheme
 
 fun main() = application {
     val platform = remember { currentPlatform() }
+    val profilesDir = remember { platform.appDataRoot().resolve("profiles") }
     val appState = remember {
-        AppState(FileSettingsRepo(platform.settingsFile()), systemDark = true)
+        AppState(
+            settingsRepo = FileSettingsRepo(platform.settingsFile()),
+            systemDark = true,
+            profilesRepo = ProfilesRepo(profilesDir),
+        )
     }
+    val appScope = rememberCoroutineScope()
+    val watcher = remember { ProfilesWatcher(profilesDir, appScope) }
     val theme by appState.theme.collectAsState()
     val settings by appState.settings.collectAsState()
     val isWindows = platform.id == "windows"
@@ -55,8 +65,10 @@ fun main() = application {
     }
     val pill by controller.pill.collectAsState()
 
-    // Start sidecars and (on Windows) install the global keyboard hook once.
+    // Load profiles (+ defaults), watch for external edits, and start sidecars once.
     LaunchedEffect(Unit) {
+        appState.initProfiles()
+        watcher.start { appState.reloadProfiles() }
         controller.startSidecars()
     }
     val hook = remember {
@@ -89,6 +101,7 @@ fun main() = application {
             Separator()
             Item("Quit Bolo Bhai") {
                 hook?.stop()
+                watcher.stop()
                 exitApplication()
             }
         },
