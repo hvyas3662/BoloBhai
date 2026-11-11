@@ -24,6 +24,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.cio)
+            implementation(libs.sqlite.jdbc)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
