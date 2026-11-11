@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.bolobhai.app.AppState
+import com.bolobhai.app.ModelsController
 import com.bolobhai.app.Screen
 import com.bolobhai.ui.theme.BoloShapes
 import kotlinx.coroutines.delay
@@ -30,7 +31,7 @@ import com.bolobhai.ui.theme.Bolo
 
 /** Main-window layout: sidebar + right border + content host (BoloBhai.md §13.0). */
 @Composable
-fun Shell(appState: AppState, hotkeyLabel: String) {
+fun Shell(appState: AppState, hotkeyLabel: String, modelsController: ModelsController) {
     val c = Bolo.colors
     val screen by appState.currentScreen.collectAsState()
 
@@ -39,7 +40,7 @@ fun Shell(appState: AppState, hotkeyLabel: String) {
         // Right border of the sidebar.
         Box(Modifier.width(1.dp).fillMaxHeight().background(c.border))
         Box(Modifier.fillMaxSize()) {
-            ContentHost(appState, screen)
+            ContentHost(appState, screen, modelsController)
             ToastHost(appState)
         }
     }
@@ -66,13 +67,13 @@ private fun ToastHost(appState: AppState) {
 }
 
 @Composable
-private fun ContentHost(appState: AppState, screen: Screen) {
+private fun ContentHost(appState: AppState, screen: Screen, modelsController: ModelsController) {
     when (screen) {
         Screen.History -> HistoryScreen(appState)
         Screen.QuickProfiles -> QuickProfilesScreen(appState)
         Screen.AllProfiles -> AllProfilesScreen()
         Screen.Dictionary -> DictionaryScreen(appState)
-        Screen.Models -> ModelsScreen()
+        Screen.Models -> ModelsScreen(appState, modelsController)
         Screen.Settings -> SettingsScreen(appState)
     }
 }

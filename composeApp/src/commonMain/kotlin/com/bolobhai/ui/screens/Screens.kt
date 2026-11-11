@@ -13,8 +13,3 @@ fun AllProfilesScreen() = ScreenScaffold(
     subtitle = "Every .md file in ~/.bolobhai/profiles/",
 ) { ComingSoon() }
 
-@Composable
-fun ModelsScreen() = ScreenScaffold(
-    title = "Models",
-    subtitle = "Everything runs on this computer. No cloud, no paid APIs.",
-) { ComingSoon() }

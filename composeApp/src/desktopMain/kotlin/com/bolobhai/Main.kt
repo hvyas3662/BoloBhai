@@ -19,7 +19,10 @@ import com.bolobhai.app.HotkeyController
 import com.bolobhai.app.Screen
 import com.bolobhai.data.DictionaryRepo
 import com.bolobhai.data.FileSettingsRepo
+import com.bolobhai.app.ModelsController
 import com.bolobhai.data.HistoryRepo
+import com.bolobhai.data.ModelCatalog
+import com.bolobhai.data.ModelRepo
 import com.bolobhai.data.ProfilesRepo
 import com.bolobhai.data.ProfilesWatcher
 import com.bolobhai.domain.HotkeyInput
@@ -49,6 +52,9 @@ fun main() = application {
     }
     val appScope = rememberCoroutineScope()
     val watcher = remember { ProfilesWatcher(profilesDir, appScope) }
+    val modelsController = remember {
+        ModelsController(appState, ModelRepo(platform.appDataRoot().resolve("models")), ModelCatalog.load().models, appScope)
+    }
     val theme by appState.theme.collectAsState()
     val settings by appState.settings.collectAsState()
     val isWindows = platform.id == "windows"
@@ -144,7 +150,7 @@ fun main() = application {
     ) {
         window.minimumSize = java.awt.Dimension(1100, 700)
         BoloTheme(mode = theme, systemDark = appState.systemDark) {
-            Shell(appState, hotkeyLabel)
+            Shell(appState, hotkeyLabel, modelsController)
         }
     }
 
