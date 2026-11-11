@@ -1,5 +1,6 @@
 package com.bolobhai
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,22 +14,62 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.bolobhai.app.AppState
+import com.bolobhai.app.HotkeyController
 import com.bolobhai.app.Screen
 import com.bolobhai.data.FileSettingsRepo
+import com.bolobhai.domain.HotkeyInput
+import com.bolobhai.platform.WhisperLauncher
 import com.bolobhai.platform.currentPlatform
+import com.bolobhai.platform.win.WinKeyboardHook
+import com.bolobhai.platform.win.WinPaster
+import com.bolobhai.platform.win.dictationKeyFromSetting
 import com.bolobhai.ui.Shell
 import com.bolobhai.ui.components.BoloIcons
+import com.bolobhai.ui.pill.PillWindow
 import com.bolobhai.ui.theme.BoloTheme
 
 fun main() = application {
     val platform = remember { currentPlatform() }
     val appState = remember {
-        // System theme resolves to the Dark default at startup in M1 (spec P5); manual toggle is live.
         AppState(FileSettingsRepo(platform.settingsFile()), systemDark = true)
     }
     val theme by appState.theme.collectAsState()
     val settings by appState.settings.collectAsState()
-    val hotkeyLabel = if (platform.id == "windows") settings.hotkey.windows else settings.hotkey.mac
+    val isWindows = platform.id == "windows"
+    val hotkeyLabel = if (isWindows) settings.hotkey.windows else settings.hotkey.mac
+    val pasteShortcut = if (isWindows) "Ctrl+V" else "Cmd+V"
+
+    val controller = remember {
+        HotkeyController(
+            appState = appState,
+            hotkeyLabel = hotkeyLabel,
+            pasteShortcut = pasteShortcut,
+            launchWhisper = { port ->
+                WhisperLauncher.launch(
+                    port,
+                    platform.appDataRoot().resolve("models").resolve(appState.settings.value.activeWhisperModel),
+                )
+            },
+            paste = if (isWindows) WinPaster::paste else { _ -> },
+        )
+    }
+    val pill by controller.pill.collectAsState()
+
+    // Start sidecars and (on Windows) install the global keyboard hook once.
+    LaunchedEffect(Unit) {
+        controller.startSidecars()
+    }
+    val hook = remember {
+        if (isWindows) {
+            WinKeyboardHook(
+                dictationKey = dictationKeyFromSetting(appState.settings.value.hotkey.windows),
+                onInput = controller::onInput,
+                isRecording = controller::isRecording,
+            ).also { it.start() }
+        } else {
+            null
+        }
+    }
 
     // §6.0: closing the main window only hides it; the app keeps running and quits via the tray.
     var windowVisible by remember { mutableStateOf(true) }
@@ -46,7 +87,10 @@ fun main() = application {
                 windowVisible = true
             }
             Separator()
-            Item("Quit Bolo Bhai") { exitApplication() }
+            Item("Quit Bolo Bhai") {
+                hook?.stop()
+                exitApplication()
+            }
         },
     )
 
@@ -61,5 +105,16 @@ fun main() = application {
         BoloTheme(mode = theme, systemDark = appState.systemDark) {
             Shell(appState, hotkeyLabel)
         }
+    }
+
+    // Floating recording pill (shown only while a gesture is active).
+    pill?.let { state ->
+        PillWindow(
+            state = state,
+            themeMode = theme,
+            systemDark = appState.systemDark,
+            onStop = { controller.onInput(HotkeyInput.KeyDown) },
+            onCancel = { controller.onInput(HotkeyInput.Esc) },
+        )
     }
 }
