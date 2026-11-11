@@ -137,6 +137,12 @@ class HotkeyController(
         appState.toast("Re-transcribed · dictionary applied")
     }
 
+    /** §13.3 "Test on last dictation" — run [profile] on the newest raw transcript, no save. */
+    suspend fun testProfile(profile: Profile): String? {
+        val item = appState.history.value.firstOrNull() ?: return null
+        return runLlm(profile, item.rawTranscript)
+    }
+
     /** Run the profile's prompt with the 15 s timeout; null on timeout/error/empty/not-ready. */
     private suspend fun runLlm(profile: Profile, text: String): String? {
         if (llamaSupervisor.status.value != SidecarStatus.Ready) return null

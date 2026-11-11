@@ -43,6 +43,16 @@ class ProfilesRepo(private val dir: Path) {
         dir.resolve(fileName).deleteIfExists()
     }
 
+    /** Move the profile to the OS trash (BoloBhai.md §13.3); falls back to a hard delete. */
+    fun deleteToTrash(fileName: String) {
+        val file = dir.resolve(fileName)
+        val trashed = runCatching {
+            val desktop = java.awt.Desktop.getDesktop()
+            desktop.isSupported(java.awt.Desktop.Action.MOVE_TO_TRASH) && desktop.moveToTrash(file.toFile())
+        }.getOrDefault(false)
+        if (!trashed) file.deleteIfExists()
+    }
+
     /** Rename the display name: rewrite frontmatter and rename the file to slug(name).md. */
     fun rename(fileName: String, newName: String): Profile {
         val current = read(fileName) ?: error("No such profile: $fileName")

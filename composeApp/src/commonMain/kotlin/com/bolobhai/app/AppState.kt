@@ -123,6 +123,33 @@ class AppState(
         reloadProfiles()
     }
 
+    /** Rename a profile's display name (file renamed to slug(name).md), remapping any slot (§13.3). */
+    fun renameProfile(oldFile: String, newName: String) {
+        val repo = profilesRepo ?: return
+        val updated = repo.rename(oldFile, newName)
+        if (updated.fileName != oldFile) {
+            val slots = _settings.value.quickSlots.mapValues { if (it.value == oldFile) updated.fileName else it.value }
+            persist { it.copy(quickSlots = slots) }
+        }
+        reloadProfiles()
+    }
+
+    /** Delete a profile to the OS trash and clear it from any slot (§13.3). */
+    fun deleteProfile(fileName: String) {
+        val repo = profilesRepo ?: return
+        repo.deleteToTrash(fileName)
+        val slots = _settings.value.quickSlots.mapValues { if (it.value == fileName) null else it.value }
+        persist { it.copy(quickSlots = slots) }
+        reloadProfiles()
+        toast("Deleted")
+    }
+
+    /** Run a profile's prompt on the newest dictation for a preview (§13.3); wired by the controller. */
+    var testProfileOp: (suspend (Profile) -> String?)? = null
+
+    /** Open the profiles folder in the OS file manager (§13.3); wired by the desktop entry point. */
+    var openProfilesFolder: (() -> Unit)? = null
+
     fun setPostProcessing(enabled: Boolean) = persist { it.copy(postProcessing = enabled) }
     fun setLanguage(language: String) = persist { it.copy(language = language) }
     fun setHotkeyWindows(key: String) = persist { it.copy(hotkey = it.hotkey.copy(windows = key)) }

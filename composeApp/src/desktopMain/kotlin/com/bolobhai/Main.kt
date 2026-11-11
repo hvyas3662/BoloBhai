@@ -105,6 +105,8 @@ fun main() = application {
         appState.reprocessOp = controller::reprocess
         appState.retranscribeOp = controller::retranscribe
         appState.retryOp = controller::retry
+        appState.testProfileOp = controller::testProfile
+        appState.openProfilesFolder = { platform.openFolder(profilesDir) }
         appState.applyLaunchAtLogin = platform::setLaunchAtLogin
         appState.initProfiles()
         appState.loadHistory()
