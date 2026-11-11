@@ -31,12 +31,12 @@ import com.bolobhai.ui.theme.Bolo
 
 /** Main-window layout: sidebar + right border + content host (BoloBhai.md §13.0). */
 @Composable
-fun Shell(appState: AppState, hotkeyLabel: String, modelsController: ModelsController) {
+fun Shell(appState: AppState, hotkeyLabel: String, modelsController: ModelsController, statusLine: String, ready: Boolean) {
     val c = Bolo.colors
     val screen by appState.currentScreen.collectAsState()
 
     Row(Modifier.fillMaxSize().background(c.bg)) {
-        Sidebar(appState, hotkeyLabel)
+        Sidebar(appState, hotkeyLabel, statusLine, ready)
         // Right border of the sidebar.
         Box(Modifier.width(1.dp).fillMaxHeight().background(c.border))
         Box(Modifier.fillMaxSize()) {

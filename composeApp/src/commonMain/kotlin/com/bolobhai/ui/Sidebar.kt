@@ -44,7 +44,7 @@ import androidx.compose.runtime.collectAsState
 private data class NavItem(val screen: Screen, val icon: androidx.compose.ui.graphics.vector.ImageVector, val counter: String?)
 
 @Composable
-fun Sidebar(appState: AppState, hotkeyLabel: String, modifier: Modifier = Modifier) {
+fun Sidebar(appState: AppState, hotkeyLabel: String, statusLine: String, ready: Boolean, modifier: Modifier = Modifier) {
     val c = Bolo.colors
     val currentScreen by appState.currentScreen.collectAsState()
     val theme by appState.theme.collectAsState()
@@ -134,9 +134,9 @@ fun Sidebar(appState: AppState, hotkeyLabel: String, modifier: Modifier = Modifi
 
         // 5. Status line
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(8.dp).clip(CircleShape).background(c.green))
+            Box(Modifier.size(8.dp).clip(CircleShape).background(if (ready) c.green else c.orange))
             Text(
-                "Offline · Qwen3 warm",
+                statusLine,
                 style = Bolo.type.meta,
                 color = c.muted,
                 modifier = Modifier.padding(start = 8.dp).weight(1f),

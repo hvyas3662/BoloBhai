@@ -129,8 +129,15 @@ private fun HotkeyStep(hotkeyLabel: String) = Column(verticalArrangement = Arran
 @Composable
 private fun ModelsStep(defaults: List<com.bolobhai.app.ModelUi>, controller: ModelsController) = Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
     val total = defaults.sumOf { it.entry.sizeBytes }
+    val freeBytes = remember { runCatching { java.io.File(System.getProperty("user.home")).usableSpace }.getOrDefault(Long.MAX_VALUE) }
+    val enoughDisk = freeBytes >= total
     Text("Download models", style = Bolo.type.h2, color = Bolo.colors.text)
-    Text("Needs ${formatBytes(total)} free disk.", style = Bolo.type.meta, color = Bolo.colors.muted)
+    Text(
+        if (enoughDisk) "Needs ${formatBytes(total)} free disk · ${formatBytes(freeBytes)} available."
+        else "Not enough disk: needs ${formatBytes(total)}, only ${formatBytes(freeBytes)} free.",
+        style = Bolo.type.meta,
+        color = if (enoughDisk) Bolo.colors.muted else Bolo.colors.orange,
+    )
     defaults.forEach { ui ->
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -147,7 +154,7 @@ private fun ModelsStep(defaults: List<com.bolobhai.app.ModelUi>, controller: Mod
             }
         }
     }
-    BoloButton("Download ${formatBytes(total)}", variant = ButtonVariant.Primary, onClick = {
+    BoloButton("Download ${formatBytes(total)}", variant = ButtonVariant.Primary, enabled = enoughDisk, onClick = {
         defaults.filter { it.state != ModelState.Installed }.forEach { controller.download(it.entry) }
     })
 }

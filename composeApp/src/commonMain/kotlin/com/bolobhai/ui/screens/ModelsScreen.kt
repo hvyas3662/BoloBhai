@@ -38,9 +38,10 @@ fun ModelsScreen(appState: AppState, controller: ModelsController) {
     val models by controller.models.collectAsState()
     val settings by appState.settings.collectAsState()
 
+    val usedOnDisk = models.filter { it.state == ModelState.Installed }.sumOf { it.entry.sizeBytes }
     ScreenScaffold(
         title = "Models",
-        subtitle = "Everything runs on this computer. No cloud, no paid APIs.",
+        subtitle = "Everything runs on this computer · ${formatBytes(usedOnDisk)} used on disk.",
     ) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(32.dp),

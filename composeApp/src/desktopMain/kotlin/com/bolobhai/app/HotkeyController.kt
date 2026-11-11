@@ -86,6 +86,7 @@ class HotkeyController(
 
     @Volatile private var levels = List(14) { 0f }
     @Volatile private var recordingStartMs = 0L
+    @Volatile private var llmMissingNotified = false
     private var tickerJob: Job? = null
 
     fun startSidecars() {
@@ -162,6 +163,17 @@ class HotkeyController(
 
     fun isRecording(): Boolean = sm.state in RECORDING_STATES
 
+    /** Start a hands-free recording from the tray (§13.9) by replaying a double-tap. */
+    fun startHandsFree() {
+        if (isRecording()) return
+        scope.launch {
+            onInput(HotkeyInput.KeyDown); delay(30)
+            onInput(HotkeyInput.KeyUp); delay(30)
+            onInput(HotkeyInput.KeyDown); delay(30)
+            onInput(HotkeyInput.KeyUp)
+        }
+    }
+
     /** Fed by the platform hook; returns whether to swallow the key event. */
     fun onInput(input: HotkeyInput): Boolean {
         val now = System.currentTimeMillis()
@@ -188,8 +200,15 @@ class HotkeyController(
     private fun startRecording(mode: RecMode, now: Long) {
         recordingStartMs = now
         levels = List(14) { 0f }
+        try {
+            recorder.start(appState.settings.value.microphone) { level -> levels = (levels.drop(1) + level) }
+        } catch (_: Exception) {
+            // §14: no microphone -> cancel the gesture and tell the user.
+            onInput(HotkeyInput.Esc)
+            appState.toast("No microphone — check Settings › Audio")
+            return
+        }
         if (appState.settings.value.sounds) Sounds.start()
-        recorder.start(appState.settings.value.microphone) { level -> levels = (levels.drop(1) + level) }
         _pill.value = buildPill(toPhase(mode))
         startTicker()
     }
@@ -243,6 +262,11 @@ class HotkeyController(
                     finishFailed("LLM timeout · raw text pasted")
                 }
             } else {
+                // §14: user wanted post-processing but the LLM model is missing -> one-time notice.
+                if (settings.postProcessing && profile != null && !llmMissingNotified) {
+                    llmMissingNotified = true
+                    appState.toast("LLM model missing — pasting Whisper text. Add it in Models.")
+                }
                 paste(capitalizeFirst(corrected))
                 save(wav, createdAt, durationMs, corrected, status = "ok",
                     version = NewVersion(null, "Raw (no LLM)", capitalizeFirst(corrected), null, null))
@@ -320,6 +344,12 @@ class HotkeyController(
             while (isActive) {
                 val phase = _pill.value?.phase ?: break
                 if (phase == PillPhase.Hold || phase == PillPhase.HandsFree) {
+                    // §14: cap recording at 10 minutes, then auto-stop and process.
+                    if (recordingStartMs > 0 && System.currentTimeMillis() - recordingStartMs >= MAX_RECORDING_MS) {
+                        appState.toast("Stopped at 10 minutes")
+                        onInput(if (phase == PillPhase.HandsFree) HotkeyInput.KeyDown else HotkeyInput.KeyUp)
+                        break
+                    }
                     _pill.value = buildPill(phase)
                 }
                 delay(100)
@@ -361,6 +391,8 @@ class HotkeyController(
             HotkeyStateMachine.State.TapWait,
             HotkeyStateMachine.State.HandsFree,
         )
+
+        private const val MAX_RECORDING_MS = 10 * 60 * 1000L
 
         private fun freePort(): Int = ServerSocket(0).use { it.localPort }
     }

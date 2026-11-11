@@ -99,6 +99,17 @@ fun main() = application {
     val pill by controller.pill.collectAsState()
     val activeSlot by appState.activeSlot.collectAsState()
     val profiles by appState.profiles.collectAsState()
+    val whisperStatus by controller.whisperStatus.collectAsState()
+    val llamaStatus by controller.llamaStatus.collectAsState()
+    val whisperReady = whisperStatus == com.bolobhai.sidecar.SidecarStatus.Ready
+    val llamaReady = llamaStatus == com.bolobhai.sidecar.SidecarStatus.Ready
+    val llmName = when {
+        settings.activeLlmModel.contains("qwen", true) -> "Qwen3"
+        settings.activeLlmModel.contains("gemma", true) -> "Gemma 3"
+        else -> "LLM"
+    }
+    val statusLine = if (!whisperReady) "Speech engine starting…"
+        else "Offline · $llmName ${if (llamaReady) "warm" else "starting…"}"
 
     // Load profiles (+ defaults), watch for external edits, and start sidecars once.
     LaunchedEffect(Unit) {
@@ -142,20 +153,27 @@ fun main() = application {
         icon = rememberVectorPainter(BoloIcons.Mic),
         tooltip = "Bolo Bhai",
         menu = {
-            Item("Open Bolo Bhai") {
-                appState.navigateTo(Screen.History)
-                windowVisible = true
-            }
-            Item("Settings…") {
-                appState.navigateTo(Screen.Settings)
-                windowVisible = true
-            }
+            Item("Start dictation ($hotkeyLabel)") { controller.startHandsFree() }
             Separator()
             for (slot in 1..5) {
                 val file = settings.quickSlots[slot.toString()]
                 val name = file?.let { f -> profiles.firstOrNull { it.fileName == f }?.name } ?: "Empty"
                 val marker = if (slot == activeSlot) "● " else "   "
-                Item("$marker[$slot] $name", enabled = file != null) { appState.setActiveSlot(slot) }
+                Item("$marker[$slot] $name   $hotkeyLabel+$slot", enabled = file != null) { appState.setActiveSlot(slot) }
+            }
+            Separator()
+            Item("Open History") {
+                appState.navigateTo(Screen.History)
+                windowVisible = true
+            }
+            Item("Open profiles folder") { platform.openFolder(profilesDir) }
+            Item("New profile…") {
+                appState.navigateTo(Screen.AllProfiles)
+                windowVisible = true
+            }
+            Item("Settings…") {
+                appState.navigateTo(Screen.Settings)
+                windowVisible = true
             }
             Separator()
             Item("Quit Bolo Bhai") {
@@ -177,7 +195,7 @@ fun main() = application {
         window.minimumSize = java.awt.Dimension(1100, 700)
         BoloTheme(mode = theme, systemDark = appState.systemDark) {
             if (settings.onboardingDone) {
-                Shell(appState, hotkeyLabel, modelsController)
+                Shell(appState, hotkeyLabel, modelsController, statusLine, whisperReady)
             } else {
                 OnboardingScreen(appState, modelsController, hotkeyLabel)
             }
