@@ -31,6 +31,12 @@ kotlin {
     }
 }
 
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.bolobhai.resources"
+    generateResClass = always
+}
+
 compose.desktop {
     application {
         mainClass = "com.bolobhai.MainKt"
