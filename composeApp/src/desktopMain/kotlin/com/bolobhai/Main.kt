@@ -18,6 +18,7 @@ import com.bolobhai.app.AppState
 import com.bolobhai.app.HotkeyController
 import com.bolobhai.app.Screen
 import com.bolobhai.data.FileSettingsRepo
+import com.bolobhai.data.HistoryRepo
 import com.bolobhai.data.ProfilesRepo
 import com.bolobhai.data.ProfilesWatcher
 import com.bolobhai.domain.HotkeyInput
@@ -35,11 +36,13 @@ import com.bolobhai.ui.theme.BoloTheme
 fun main() = application {
     val platform = remember { currentPlatform() }
     val profilesDir = remember { platform.appDataRoot().resolve("profiles") }
+    val audioDir = remember { platform.appDataRoot().resolve("audio") }
     val appState = remember {
         AppState(
             settingsRepo = FileSettingsRepo(platform.settingsFile()),
             systemDark = true,
             profilesRepo = ProfilesRepo(profilesDir),
+            historyRepo = HistoryRepo(platform.appDataRoot().resolve("history.db")),
         )
     }
     val appScope = rememberCoroutineScope()
@@ -68,6 +71,7 @@ fun main() = application {
                 )
             },
             paste = if (isWindows) WinPaster::paste else { _ -> },
+            audioDir = audioDir,
         )
     }
     val pill by controller.pill.collectAsState()
@@ -77,6 +81,7 @@ fun main() = application {
     // Load profiles (+ defaults), watch for external edits, and start sidecars once.
     LaunchedEffect(Unit) {
         appState.initProfiles()
+        appState.loadHistory()
         watcher.start { appState.reloadProfiles() }
         controller.startSidecars()
     }

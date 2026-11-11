@@ -1,7 +1,10 @@
 package com.bolobhai.app
 
+import com.bolobhai.data.HistoryRepo
+import com.bolobhai.data.NewVersion
 import com.bolobhai.data.Settings
 import com.bolobhai.data.SettingsRepo
+import java.nio.file.Files
 import com.bolobhai.ui.theme.ThemeMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -23,6 +26,22 @@ class AppStateTest {
     @Test
     fun initialScreen_isHistory() {
         assertEquals(Screen.History, state().currentScreen.value)
+    }
+
+    @Test
+    fun saveDictation_insertsAndRefreshesHistory() {
+        val db = Files.createTempDirectory("appstate-hist").resolve("history.db")
+        val repo = HistoryRepo(db)
+        val s = AppState(FakeSettingsRepo(), systemDark = true, historyRepo = repo)
+        s.loadHistory()
+        assertEquals(0, s.history.value.size)
+        s.saveDictation(
+            createdAt = 1000, durationMs = 5000, rawTranscript = "hi there", audioPath = null,
+            status = "ok", version = NewVersion(null, "Raw (no LLM)", "Hi there", null, null),
+        )
+        assertEquals(1, s.history.value.size)
+        assertEquals("Hi there", s.history.value.first().current?.output)
+        repo.close()
     }
 
     @Test

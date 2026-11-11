@@ -14,6 +14,7 @@ import com.bolobhai.sidecar.LlamaClient
 import com.bolobhai.sidecar.ProcessSupervisor
 import com.bolobhai.sidecar.SidecarStatus
 import com.bolobhai.sidecar.WhisperClient
+import com.bolobhai.data.NewVersion
 import com.bolobhai.ui.components.slotKeyVisual
 import com.bolobhai.ui.pill.PillPhase
 import com.bolobhai.ui.pill.PillUiState
@@ -29,6 +30,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.net.ServerSocket
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.io.path.createDirectories
 
 /**
  * Ties the hotkey hook to the gesture state machine, recorder, pill and the whisper + llama
@@ -43,6 +47,7 @@ class HotkeyController(
     launchWhisper: (port: Int) -> Process?,
     launchLlama: (port: Int) -> Process?,
     private val paste: (String) -> Unit,
+    private val audioDir: Path,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val sm = HotkeyStateMachine(slotAssigned = { slot ->
@@ -118,6 +123,8 @@ class HotkeyController(
     private fun runPipeline() {
         stopTicker()
         _pill.value = buildPill(PillPhase.Processing)
+        val createdAt = System.currentTimeMillis()
+        val durationMs = createdAt - recordingStartMs
         scope.launch {
             val pcm = recorder.stop()
             if (whisperSupervisor.status.value != SidecarStatus.Ready) {
@@ -125,7 +132,16 @@ class HotkeyController(
                 return@launch
             }
             val settings = appState.settings.value
-            val transcript = whisper.transcribe(pcm16ToWav(pcm), settings.language, prompt = "")
+            val wav = pcm16ToWav(pcm)
+            val transcript = try {
+                whisper.transcribe(wav, settings.language, prompt = "")
+            } catch (_: Exception) {
+                // §9 whisper failed -> nothing pasted, audio kept, History status stt_failed.
+                save(wav, createdAt, durationMs, raw = "", status = "stt_failed",
+                    version = NewVersion(null, "—", "", null, null))
+                finishToast("Couldn't transcribe — audio saved to History")
+                return@launch
+            }
             if (transcript.isBlank()) {
                 finishToast("Didn't catch that")
                 return@launch
@@ -135,21 +151,49 @@ class HotkeyController(
             val profile = activeProfile()
 
             if (settings.postProcessing && profile != null && llamaSupervisor.status.value == SidecarStatus.Ready) {
+                val started = System.currentTimeMillis()
                 val raw = withTimeoutOrNull(15_000) { llama.complete(profile.body, corrected) }
                 val cleaned = raw?.let { cleanupLlmOutput(it) }
                 if (!cleaned.isNullOrBlank()) {
                     paste(cleaned)
+                    save(wav, createdAt, durationMs, corrected, status = "ok",
+                        version = NewVersion(profile.fileName, profile.name, cleaned,
+                            settings.activeLlmModel, System.currentTimeMillis() - started))
                     finishPasted()
                 } else {
                     // §9: LLM failed/timeout -> paste the corrected raw transcript, show Failed.
                     paste(capitalizeFirst(corrected))
+                    save(wav, createdAt, durationMs, corrected, status = "llm_failed",
+                        version = NewVersion(profile.fileName, profile.name, capitalizeFirst(corrected), null, null))
                     finishFailed("LLM timeout · raw text pasted")
                 }
             } else {
                 paste(capitalizeFirst(corrected))
+                save(wav, createdAt, durationMs, corrected, status = "ok",
+                    version = NewVersion(null, "Raw (no LLM)", capitalizeFirst(corrected), null, null))
                 finishPasted()
             }
         }
+    }
+
+    /** Write the WAV (unless keepAudio is off) and persist the dictation to History. */
+    private fun save(
+        wav: ByteArray,
+        createdAt: Long,
+        durationMs: Long,
+        raw: String,
+        status: String,
+        version: NewVersion,
+    ) {
+        val audioPath = if (appState.settings.value.keepAudio != "none") {
+            audioDir.createDirectories()
+            val file = audioDir.resolve("$createdAt.wav")
+            Files.write(file, wav)
+            file.toString()
+        } else {
+            null
+        }
+        appState.saveDictation(createdAt, durationMs, raw, audioPath, status, version)
     }
 
     private suspend fun finishPasted() {

@@ -1,5 +1,8 @@
 package com.bolobhai.app
 
+import com.bolobhai.data.Dictation
+import com.bolobhai.data.HistoryRepo
+import com.bolobhai.data.NewVersion
 import com.bolobhai.data.ProfilesRepo
 import com.bolobhai.data.Settings
 import com.bolobhai.data.SettingsRepo
@@ -26,9 +29,13 @@ class AppState(
     private val settingsRepo: SettingsRepo,
     val systemDark: Boolean,
     private val profilesRepo: ProfilesRepo? = null,
+    private val historyRepo: HistoryRepo? = null,
 ) {
     private val _settings = MutableStateFlow(settingsRepo.load())
     val settings: StateFlow<Settings> = _settings.asStateFlow()
+
+    private val _history = MutableStateFlow<List<Dictation>>(emptyList())
+    val history: StateFlow<List<Dictation>> = _history.asStateFlow()
 
     private val _profiles = MutableStateFlow<List<Profile>>(emptyList())
     val profiles: StateFlow<List<Profile>> = _profiles.asStateFlow()
@@ -98,6 +105,36 @@ class AppState(
     }
 
     fun setPostProcessing(enabled: Boolean) = persist { it.copy(postProcessing = enabled) }
+
+    /** (Re)load all dictations from the history store (call once at startup). */
+    fun loadHistory() {
+        _history.value = historyRepo?.list().orEmpty()
+    }
+
+    /** Persist a finished dictation (pipeline terminal states) and refresh the flow. */
+    fun saveDictation(
+        createdAt: Long,
+        durationMs: Long,
+        rawTranscript: String,
+        audioPath: String?,
+        status: String,
+        version: NewVersion,
+    ): Dictation? {
+        val repo = historyRepo ?: return null
+        val s = _settings.value
+        val item = repo.insert(
+            createdAt = createdAt,
+            durationMs = durationMs,
+            rawTranscript = rawTranscript,
+            audioPath = audioPath,
+            status = status,
+            language = s.language,
+            whisperModel = s.activeWhisperModel,
+            version = version,
+        )
+        loadHistory()
+        return item
+    }
 
     private fun persist(transform: (Settings) -> Settings) {
         val next = transform(_settings.value)
