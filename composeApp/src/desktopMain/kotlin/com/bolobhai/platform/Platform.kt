@@ -18,6 +18,24 @@ interface Platform {
     fun settingsFile(): Path = appDataRoot().resolve("settings.json")
 
     fun openFolder(path: Path)
+
+    /** Add/remove the launch-at-login entry (BoloBhai.md §13.6). No-op where unsupported. */
+    fun setLaunchAtLogin(enabled: Boolean) {}
+}
+
+/** HKCU Run entry via `reg`; the value is the current process command. */
+private const val RUN_KEY = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+private const val RUN_NAME = "BoloBhai"
+
+private fun winSetLaunchAtLogin(enabled: Boolean) {
+    val cmd = if (enabled) {
+        val exe = ProcessHandle.current().info().command().orElse("")
+        if (exe.isBlank()) return
+        listOf("reg", "add", RUN_KEY, "/v", RUN_NAME, "/t", "REG_SZ", "/d", "\"$exe\"", "/f")
+    } else {
+        listOf("reg", "delete", RUN_KEY, "/v", RUN_NAME, "/f")
+    }
+    runCatching { ProcessBuilder(cmd).redirectErrorStream(true).start().waitFor() }
 }
 
 private fun openInFileManager(path: Path) {
@@ -40,6 +58,7 @@ private object WinPlatform : Platform {
         return Path(appData, "BoloBhai")
     }
     override fun openFolder(path: Path) = openInFileManager(path)
+    override fun setLaunchAtLogin(enabled: Boolean) = winSetLaunchAtLogin(enabled)
 }
 
 private object OtherPlatform : Platform {

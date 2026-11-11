@@ -85,8 +85,10 @@ fun main() = application {
         appState.reprocessOp = controller::reprocess
         appState.retranscribeOp = controller::retranscribe
         appState.retryOp = controller::retry
+        appState.applyLaunchAtLogin = platform::setLaunchAtLogin
         appState.initProfiles()
         appState.loadHistory()
+        appState.runAudioRetention()
         watcher.start { appState.reloadProfiles() }
         controller.startSidecars()
     }

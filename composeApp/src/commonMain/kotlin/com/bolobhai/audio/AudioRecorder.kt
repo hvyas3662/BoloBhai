@@ -3,6 +3,7 @@ package com.bolobhai.audio
 import java.io.ByteArrayOutputStream
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
+import javax.sound.sampled.DataLine
 import javax.sound.sampled.TargetDataLine
 
 /**
@@ -17,9 +18,9 @@ class AudioRecorder {
 
     val isRecording: Boolean get() = running
 
-    fun start(onLevel: (Float) -> Unit) {
+    fun start(deviceName: String? = null, onLevel: (Float) -> Unit) {
         val format = AudioFormat(16_000f, 16, 1, true, false) // signed, little-endian
-        val dataLine = AudioSystem.getTargetDataLine(format)
+        val dataLine = openLine(format, deviceName)
         dataLine.open(format)
         dataLine.start()
         line = dataLine
@@ -51,6 +52,28 @@ class AudioRecorder {
     fun cancel() {
         teardown()
         buffer.reset()
+    }
+
+    companion object {
+        /** System input devices that can capture (default device first via [AudioSystem]). */
+        fun inputDevices(): List<String> {
+            val format = AudioFormat(16_000f, 16, 1, true, false)
+            val info = DataLine.Info(TargetDataLine::class.java, format)
+            return AudioSystem.getMixerInfo().filter { mixerInfo ->
+                runCatching { AudioSystem.getMixer(mixerInfo).isLineSupported(info) }.getOrDefault(false)
+            }.map { it.name }.distinct()
+        }
+    }
+
+    /** Named mixer's capture line if given and available, else the system default. */
+    private fun openLine(format: AudioFormat, deviceName: String?): TargetDataLine {
+        if (deviceName != null) {
+            val info = DataLine.Info(TargetDataLine::class.java, format)
+            AudioSystem.getMixerInfo().firstOrNull { it.name == deviceName }?.let { mi ->
+                runCatching { AudioSystem.getMixer(mi).getLine(info) as TargetDataLine }.getOrNull()?.let { return it }
+            }
+        }
+        return AudioSystem.getTargetDataLine(format)
     }
 
     private fun teardown() {

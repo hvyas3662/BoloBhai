@@ -73,6 +73,6 @@ private fun ContentHost(appState: AppState, screen: Screen) {
         Screen.AllProfiles -> AllProfilesScreen()
         Screen.Dictionary -> DictionaryScreen(appState)
         Screen.Models -> ModelsScreen()
-        Screen.Settings -> SettingsScreen()
+        Screen.Settings -> SettingsScreen(appState)
     }
 }

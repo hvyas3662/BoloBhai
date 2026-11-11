@@ -181,7 +181,7 @@ class HotkeyController(
     private fun startRecording(mode: RecMode, now: Long) {
         recordingStartMs = now
         levels = List(14) { 0f }
-        recorder.start { level -> levels = (levels.drop(1) + level) }
+        recorder.start(appState.settings.value.microphone) { level -> levels = (levels.drop(1) + level) }
         _pill.value = buildPill(toPhase(mode))
         startTicker()
     }

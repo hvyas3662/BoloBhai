@@ -9,6 +9,7 @@ import com.bolobhai.data.ProfilesRepo
 import com.bolobhai.data.Settings
 import com.bolobhai.data.SettingsRepo
 import com.bolobhai.domain.Profile
+import com.bolobhai.domain.retentionCutoffMs
 import com.bolobhai.ui.theme.ThemeMode
 import com.bolobhai.ui.theme.asSettingValue
 import com.bolobhai.ui.theme.themeModeOf
@@ -123,6 +124,30 @@ class AppState(
     }
 
     fun setPostProcessing(enabled: Boolean) = persist { it.copy(postProcessing = enabled) }
+    fun setLanguage(language: String) = persist { it.copy(language = language) }
+    fun setHotkeyWindows(key: String) = persist { it.copy(hotkey = it.hotkey.copy(windows = key)) }
+    fun setDoubleTapMs(ms: Int) = persist { it.copy(doubleTapMs = ms) }
+    fun setMicrophone(name: String?) = persist { it.copy(microphone = name) }
+    fun setSounds(enabled: Boolean) = persist { it.copy(sounds = enabled) }
+    fun setKeepAudio(value: String) = persist { it.copy(keepAudio = value) }
+    fun setActiveWhisperModel(file: String) = persist { it.copy(activeWhisperModel = file) }
+    fun setActiveLlmModel(file: String) = persist { it.copy(activeLlmModel = file) }
+    fun setOnboardingDone(done: Boolean) = persist { it.copy(onboardingDone = done) }
+
+    /** Launch-at-login toggles the OS entry via [applyLaunchAtLogin] then persists (BoloBhai.md §13.6). */
+    var applyLaunchAtLogin: ((Boolean) -> Unit)? = null
+    fun setLaunchAtLogin(enabled: Boolean) {
+        applyLaunchAtLogin?.invoke(enabled)
+        persist { it.copy(launchAtLogin = enabled) }
+    }
+
+    /** Delete audio older than the retention window (startup + periodic; BoloBhai.md §13.6). */
+    fun runAudioRetention(now: Long = System.currentTimeMillis()) {
+        val cutoff = retentionCutoffMs(_settings.value.keepAudio, now) ?: return
+        val repo = historyRepo ?: return
+        deleteAudioFiles(repo.clearAudioOlderThan(cutoff))
+        loadHistory()
+    }
 
     fun saveDictionary(dict: Dictionary) {
         _dictionary.value = dict
