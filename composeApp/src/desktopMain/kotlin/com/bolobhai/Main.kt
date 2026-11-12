@@ -127,6 +127,8 @@ fun main() = application {
         appState.runAudioRetention()
         watcher.start { appState.reloadProfiles() }
         controller.startSidecars()
+        // Safety net: kill the sidecar servers if the JVM exits any other way than Quit.
+        Runtime.getRuntime().addShutdownHook(Thread { controller.stopSidecars() })
         // macOS: the Swift helper is our global key source; keep its capture flag in sync so it
         // swallows 1–5/Esc only while recording (BoloBhai.md §6.4).
         if (isMac) macHelper.start { ev ->
@@ -182,6 +184,7 @@ fun main() = application {
             Item("Quit Bolo Bhai") {
                 hook?.stop()
                 macHelper.stop()
+                controller.stopSidecars()
                 watcher.stop()
                 exitApplication()
             }
@@ -219,9 +222,7 @@ fun main() = application {
     }
 }
 
-/** Bundled Swift helper path: `sidecars/mac-<arch>/bolobhai-mac-helper` (BoloBhai.md §17). */
-private fun macHelperBinary() = Path(
-    "sidecars",
-    if (System.getProperty("os.arch").lowercase().contains("aarch64")) "mac-arm64" else "mac-x64",
-    "bolobhai-mac-helper",
-)
+/** Bundled Swift helper, resolved like the other sidecars (BoloBhai.md §17). */
+private fun macHelperBinary() =
+    com.bolobhai.platform.Sidecars.binary("bolobhai-mac-helper")
+        ?: Path("sidecars", "macos-arm64", "bolobhai-mac-helper")

@@ -94,6 +94,12 @@ class HotkeyController(
         scope.launch { llamaSupervisor.start() }
     }
 
+    /** Kill both sidecar servers (call on full app quit so nothing is left running). */
+    fun stopSidecars() {
+        whisperSupervisor.stop()
+        llamaSupervisor.stop()
+    }
+
     /** §13.1 More menu — re-run the LLM on an item's raw transcript, saved as a new version. */
     suspend fun reprocess(item: Dictation, profile: Profile) {
         val out = runLlm(profile, item.rawTranscript) ?: run { appState.toast("Re-process failed"); return }

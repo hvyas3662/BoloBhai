@@ -2,7 +2,6 @@ package com.bolobhai.platform
 
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.Path
 
 /**
  * Launches the bundled llama.cpp server sidecar (BoloBhai.md §9/§16). Returns null when the binary
@@ -10,7 +9,7 @@ import kotlin.io.path.Path
  */
 object LlamaLauncher {
     fun launch(port: Int, modelPath: Path): Process? {
-        val exe = sidecarBinary() ?: return null
+        val exe = Sidecars.binary("llama-server") ?: return null
         if (!Files.exists(modelPath)) return null
         return ProcessBuilder(
             exe.toString(),
@@ -21,10 +20,5 @@ object LlamaLauncher {
             "-ngl", "99",
             "--parallel", "1",
         ).redirectErrorStream(true).start()
-    }
-
-    private fun sidecarBinary(): Path? {
-        val candidate = Path("sidecars", "windows-x64", "llama-server.exe")
-        return candidate.takeIf { Files.exists(it) }
     }
 }

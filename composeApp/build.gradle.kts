@@ -58,6 +58,11 @@ compose.desktop {
             vendor = "Bolo Bhai"
             description = "Local offline Hinglish voice dictation"
 
+            // Bundle the sidecar binaries (whisper-server, llama-server, mac helper) into the
+            // install folder. Compose copies sidecars/<os>/ and exposes it at runtime via the
+            // compose.application.resources.dir system property (see platform/Sidecars.kt).
+            appResourcesRootDir.set(project.rootProject.layout.projectDirectory.dir("sidecars"))
+
             windows {
                 iconFile.set(project.rootProject.file("resources/icons/image_94bc1ad5 1.ico"))
                 menuGroup = "Bolo Bhai"
