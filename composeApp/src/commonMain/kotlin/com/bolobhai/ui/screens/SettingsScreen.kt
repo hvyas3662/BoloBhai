@@ -96,6 +96,7 @@ fun SettingsScreen(appState: AppState) {
     if (confirmClear) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
+            title = { Text("Clear all history", style = Bolo.type.h2, color = Bolo.colors.text) },
             confirmButton = {
                 BoloButton("Clear", variant = ButtonVariant.Danger, onClick = { appState.clearHistory(); confirmClear = false })
             },
@@ -106,6 +107,7 @@ fun SettingsScreen(appState: AppState) {
                     style = Bolo.type.body, color = Bolo.colors.text,
                 )
             },
+            containerColor = Bolo.colors.panel,
         )
     }
 }

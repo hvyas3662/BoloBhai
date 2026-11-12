@@ -294,9 +294,11 @@ private fun MoreMenu(
 private fun ConfirmDialog(text: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        title = { Text("Delete dictation", style = Bolo.type.h2, color = Bolo.colors.text) },
         confirmButton = { BoloButton("Delete", variant = ButtonVariant.Danger, onClick = onConfirm) },
         dismissButton = { BoloButton("Cancel", onClick = onDismiss) },
         text = { Text(text, style = Bolo.type.body, color = Bolo.colors.text) },
+        containerColor = Bolo.colors.panel,
     )
 }
 

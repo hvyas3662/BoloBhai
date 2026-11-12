@@ -112,14 +112,14 @@ fun Sidebar(appState: AppState, hotkeyLabel: String, statusLine: String, ready: 
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("ACTIVE PROFILE", style = Bolo.type.sectionLabel, color = c.muted)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 for (slot in 1..5) {
                     val assigned = settings.quickSlots[slot.toString()] != null
                     SlotKey(
                         number = slot,
                         visual = slotKeyVisual(slot, activeSlot, assigned),
-                        sizeDp = 36.dp,
-                        onClick = { appState.navigateTo(Screen.QuickProfiles) },
+                        sizeDp = 32.dp,
+                        onClick = { appState.setActiveSlot(slot) },
                     )
                 }
             }

@@ -159,9 +159,11 @@ private fun Editor(appState: AppState, profile: Profile, slot: Int?, profileCoun
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete profile", style = Bolo.type.h2, color = c.text) },
             confirmButton = { BoloButton("Delete", variant = ButtonVariant.Danger, onClick = { appState.deleteProfile(profile.fileName); confirmDelete = false }) },
             dismissButton = { BoloButton("Cancel", onClick = { confirmDelete = false }) },
             text = { Text("Delete “${profile.name}”? The .md file goes to the trash.", style = Bolo.type.body, color = c.text) },
+            containerColor = c.panel,
         )
     }
 }
