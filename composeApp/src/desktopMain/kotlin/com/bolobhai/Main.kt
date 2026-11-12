@@ -116,6 +116,7 @@ fun main() = application {
 
     // Load profiles (+ defaults), watch for external edits, and start sidecars once.
     LaunchedEffect(Unit) {
+        com.bolobhai.log.Logger.init(platform.appDataRoot().resolve("bolobhai.log"))
         appState.reprocessOp = controller::reprocess
         appState.retranscribeOp = controller::retranscribe
         appState.retryOp = controller::retry

@@ -90,6 +90,8 @@ fun SettingsScreen(appState: AppState) {
                 }
                 BoloButton("Clear all history", variant = ButtonVariant.Danger, onClick = { confirmClear = true })
             }
+
+            com.bolobhai.ui.LogsPanel(onToast = { appState.toast(it) })
         }
     }
 

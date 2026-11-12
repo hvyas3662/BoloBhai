@@ -90,6 +90,8 @@ class HotkeyController(
     private var tickerJob: Job? = null
 
     fun startSidecars() {
+        scope.launch { whisperSupervisor.status.collect { com.bolobhai.log.Logger.info("whisper status: $it") } }
+        scope.launch { llamaSupervisor.status.collect { com.bolobhai.log.Logger.info("llama status: $it") } }
         scope.launch { whisperSupervisor.start() }
         scope.launch { llamaSupervisor.start() }
     }
