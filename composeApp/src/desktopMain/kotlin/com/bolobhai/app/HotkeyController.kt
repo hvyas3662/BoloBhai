@@ -87,8 +87,6 @@ class HotkeyController(
     @Volatile private var levels = List(14) { 0f }
     @Volatile private var recordingStartMs = 0L
     @Volatile private var llmMissingNotified = false
-    // Hold always uses the default profile; only hands-free (double-tap) honours 1–5 switching.
-    @Volatile private var recMode: RecMode = RecMode.Hold
     private var tickerJob: Job? = null
 
     fun startSidecars() {
@@ -199,9 +197,9 @@ class HotkeyController(
 
     private fun apply(effect: HotkeyEffect, now: Long) {
         when (effect) {
-            is HotkeyEffect.StartRecording -> { recMode = effect.mode; startRecording(effect.mode, now) }
+            is HotkeyEffect.StartRecording -> startRecording(effect.mode, now)
             is HotkeyEffect.ShowPill -> _pill.value = buildPill(toPhase(effect.mode))
-            is HotkeyEffect.SetPillMode -> { recMode = effect.mode; _pill.value = buildPill(toPhase(effect.mode)) }
+            is HotkeyEffect.SetPillMode -> _pill.value = buildPill(toPhase(effect.mode))
             HotkeyEffect.StartDoubleTapTimer -> scheduleDoubleTapTimeout()
             is HotkeyEffect.SwitchSlot -> {
                 appState.setActiveSlot(effect.n)
@@ -367,13 +365,8 @@ class HotkeyController(
         if (toast != null) _toast.value = toast
     }
 
-    /** Slot the pill + pipeline use: hold -> default (slot 1); hands-free -> the active slot. */
-    private fun effectiveSlot(): Int =
-        if (recMode == RecMode.Hold) resolveActiveSlot(appState.settings.value.quickSlots, 1)
-        else appState.activeSlot.value
-
     private fun activeProfile(): Profile? {
-        val file = appState.settings.value.quickSlots[effectiveSlot().toString()] ?: return null
+        val file = appState.settings.value.quickSlots[appState.activeSlot.value.toString()] ?: return null
         return appState.profiles.value.firstOrNull { it.fileName == file }
     }
 
@@ -415,7 +408,7 @@ class HotkeyController(
 
     private fun buildPill(phase: PillPhase): PillUiState {
         val settings = appState.settings.value
-        val active = effectiveSlot()
+        val active = appState.activeSlot.value
         val slots = (1..5).map { slot ->
             slotKeyVisual(slot, active, settings.quickSlots[slot.toString()] != null)
         }
