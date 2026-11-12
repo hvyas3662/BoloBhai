@@ -9,7 +9,7 @@ object BoloRadii {
     val panel = 16.dp
     val panelLarge = 20.dp
     val button = 10.dp
-    val input = 10.dp
+    val input = 6.dp
     val slotChip = 10.dp
     val pill = 999.dp
     val filterChip = 999.dp

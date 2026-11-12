@@ -34,7 +34,7 @@ fun BoloTextField(
             .clip(BoloShapes.input)
             .background(c.input)
             .border(1.dp, c.border, BoloShapes.input)
-            .padding(horizontal = 12.dp, vertical = 9.dp),
+            .padding(horizontal = 12.dp, vertical = 11.dp),
     ) {
         BasicTextField(
             value = value,

@@ -6,8 +6,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -52,43 +55,46 @@ fun SettingsScreen(appState: AppState) {
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(32.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Card("Hotkey") {
-                Segmented(listOf("Fn", "Alt", "Right Ctrl"), settings.hotkey.windows) { appState.setHotkeyWindows(it) }
-                Text("Fn works only if your laptop reports it to Windows. Takes effect on restart.", style = Bolo.type.meta, color = Bolo.colors.muted)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Double-tap window", style = Bolo.type.body, color = Bolo.colors.text)
-                    Slider(
-                        value = settings.doubleTapMs.toFloat(),
-                        onValueChange = { appState.setDoubleTapMs((it / 25).toInt() * 25) },
-                        valueRange = 250f..600f, steps = (600 - 250) / 25 - 1,
-                        modifier = Modifier.width(260.dp),
+            // Two-column grid (BoloBhai.md §13.6).
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                Card("Hotkey", Modifier.weight(1f).fillMaxHeight()) {
+                    Segmented(listOf("Fn", "Alt", "Right Ctrl"), settings.hotkey.windows) { appState.setHotkeyWindows(it) }
+                    Text("Fn works only if your laptop reports it to Windows. Takes effect on restart.", style = Bolo.type.meta, color = Bolo.colors.muted)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Double-tap", style = Bolo.type.body, color = Bolo.colors.text)
+                        Slider(
+                            value = settings.doubleTapMs.toFloat(),
+                            onValueChange = { appState.setDoubleTapMs((it / 25).toInt() * 25) },
+                            valueRange = 250f..600f, steps = (600 - 250) / 25 - 1,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text("${settings.doubleTapMs} ms", style = Bolo.type.mono, color = Bolo.colors.muted)
+                    }
+                }
+                Card("Audio", Modifier.weight(1f).fillMaxHeight()) {
+                    val devices = remember { listOf<String?>(null) + AudioRecorder.inputDevices() }
+                    Picker(
+                        label = settings.microphone ?: "System default",
+                        options = devices.map { (it ?: "System default") to it },
+                        onPick = { appState.setMicrophone(it) },
                     )
-                    Text("${settings.doubleTapMs} ms", style = Bolo.type.mono, color = Bolo.colors.muted)
+                    LabeledSwitch("Start / stop sound", settings.sounds) { appState.setSounds(it) }
                 }
             }
 
-            Card("Audio") {
-                val devices = remember { listOf<String?>(null) + AudioRecorder.inputDevices() }
-                Picker(
-                    label = settings.microphone ?: "System default",
-                    options = devices.map { (it ?: "System default") to it },
-                    onPick = { appState.setMicrophone(it) },
-                )
-                LabeledSwitch("Start / stop sound", settings.sounds) { appState.setSounds(it) }
-            }
-
-            Card("General") {
-                Segmented(listOf("Dark", "Light", "System"), theme.name) { appState.setTheme(ThemeMode.valueOf(it)) }
-                LabeledSwitch("Launch at login", settings.launchAtLogin) { appState.setLaunchAtLogin(it) }
-            }
-
-            Card("History & storage") {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Keep audio for", style = Bolo.type.body, color = Bolo.colors.text)
-                    val labels = mapOf("7d" to "7 days", "30d" to "30 days", "forever" to "Forever", "none" to "Don't save")
-                    SegmentedMapped(labels, settings.keepAudio) { appState.setKeepAudio(it) }
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                Card("General", Modifier.weight(1f).fillMaxHeight()) {
+                    Segmented(listOf("Dark", "Light", "System"), theme.name) { appState.setTheme(ThemeMode.valueOf(it)) }
+                    LabeledSwitch("Launch at login", settings.launchAtLogin) { appState.setLaunchAtLogin(it) }
                 }
-                BoloButton("Clear all history", variant = ButtonVariant.Danger, onClick = { confirmClear = true })
+                Card("History & storage", Modifier.weight(1f).fillMaxHeight()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Keep audio for", style = Bolo.type.body, color = Bolo.colors.text)
+                        val labels = mapOf("7d" to "7 days", "30d" to "30 days", "forever" to "Forever", "none" to "Don't save")
+                        SegmentedMapped(labels, settings.keepAudio) { appState.setKeepAudio(it) }
+                    }
+                    BoloButton("Clear all history", variant = ButtonVariant.Danger, onClick = { confirmClear = true })
+                }
             }
 
             com.bolobhai.ui.LogsPanel(onToast = { appState.toast(it) })
@@ -115,10 +121,10 @@ fun SettingsScreen(appState: AppState) {
 }
 
 @Composable
-private fun Card(title: String, body: @Composable () -> Unit) {
+private fun Card(title: String, modifier: Modifier = Modifier, body: @Composable () -> Unit) {
     val c = Bolo.colors
     Column(
-        Modifier.fillMaxWidth().clip(BoloShapes.card).background(c.card).border(1.dp, c.border, BoloShapes.card).padding(20.dp),
+        modifier.fillMaxWidth().clip(BoloShapes.card).background(c.card).border(1.dp, c.border, BoloShapes.card).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(title, style = Bolo.type.h2, color = c.text)

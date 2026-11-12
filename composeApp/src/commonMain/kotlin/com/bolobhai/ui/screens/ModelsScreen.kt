@@ -6,7 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -47,8 +49,10 @@ fun ModelsScreen(appState: AppState, controller: ModelsController) {
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(32.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            KindCard("Speech to text", models.filter { it.entry.kind == "stt" }, controller)
-            KindCard("Post-processing LLM", models.filter { it.entry.kind == "llm" }, controller)
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                KindCard("Speech to text", models.filter { it.entry.kind == "stt" }, controller, Modifier.weight(1f).fillMaxHeight())
+                KindCard("Post-processing LLM", models.filter { it.entry.kind == "llm" }, controller, Modifier.weight(1f).fillMaxHeight())
+            }
 
             SettingsCard {
                 Text("Spoken language", style = Bolo.type.sectionLabel, color = Bolo.colors.muted)
@@ -67,10 +71,10 @@ fun ModelsScreen(appState: AppState, controller: ModelsController) {
 }
 
 @Composable
-private fun KindCard(title: String, rows: List<ModelUi>, controller: ModelsController) {
+private fun KindCard(title: String, rows: List<ModelUi>, controller: ModelsController, modifier: Modifier = Modifier) {
     val c = Bolo.colors
     Column(
-        Modifier.fillMaxWidth().clip(BoloShapes.card).background(c.card).border(1.dp, c.border, BoloShapes.card).padding(20.dp),
+        modifier.fillMaxWidth().clip(BoloShapes.card).background(c.card).border(1.dp, c.border, BoloShapes.card).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(title, style = Bolo.type.h2, color = c.text)
