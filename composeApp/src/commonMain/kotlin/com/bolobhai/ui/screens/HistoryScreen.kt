@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +47,7 @@ import com.bolobhai.domain.rawCount
 import com.bolobhai.domain.Profile
 import com.bolobhai.ui.components.AudioPlayerBar
 import com.bolobhai.ui.components.BoloButton
+import com.bolobhai.ui.components.BoloTextField
 import com.bolobhai.ui.components.ButtonVariant
 import com.bolobhai.ui.theme.Bolo
 import com.bolobhai.ui.theme.BoloShapes
@@ -78,11 +78,10 @@ fun HistoryScreen(appState: AppState) {
         title = "History",
         subtitle = "${items.size} dictations",
         trailing = {
-            OutlinedTextField(
+            BoloTextField(
                 value = query,
                 onValueChange = { query = it },
-                singleLine = true,
-                placeholder = { Text("Search output or original…", style = Bolo.type.body, color = Bolo.colors.muted) },
+                placeholder = "Search output or original…",
                 modifier = Modifier.width(300.dp),
             )
         },

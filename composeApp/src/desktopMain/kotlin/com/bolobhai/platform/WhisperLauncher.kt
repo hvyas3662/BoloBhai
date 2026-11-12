@@ -10,7 +10,7 @@ import java.nio.file.Path
  */
 object WhisperLauncher {
     fun launch(port: Int, modelPath: Path): Process? {
-        val exe = Sidecars.binary("whisper-server") ?: return null
+        val exe = Sidecars.whisperServer() ?: return null
         if (!Files.exists(modelPath)) return null
         return ProcessBuilder(
             exe.toString(),

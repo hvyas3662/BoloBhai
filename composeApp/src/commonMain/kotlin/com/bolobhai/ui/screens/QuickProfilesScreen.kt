@@ -14,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.bolobhai.app.AppState
 import com.bolobhai.domain.Profile
 import com.bolobhai.ui.components.BoloButton
+import com.bolobhai.ui.components.BoloTextField
 import com.bolobhai.ui.components.ButtonVariant
 import com.bolobhai.ui.components.Kbd
 import com.bolobhai.ui.components.SlotKey
@@ -145,11 +145,12 @@ private fun SlotEditor(appState: AppState, slot: Int, fileName: String?, profile
             Text("Instructions for the LLM", style = Bolo.type.sectionLabel, color = c.muted)
             var body by remember(profile.fileName) { mutableStateOf(profile.body) }
             LaunchedEffect(profile.fileName) { body = profile.body }
-            OutlinedTextField(
+            BoloTextField(
                 value = body,
                 onValueChange = { body = it },
+                singleLine = false,
+                textStyle = Bolo.type.mono.copy(fontFamily = FontFamily.Monospace),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
-                textStyle = Bolo.type.mono.copy(fontFamily = FontFamily.Monospace, color = c.text),
             )
             BoloButton("Save ${profile.fileName}", variant = ButtonVariant.Primary, onClick = {
                 appState.saveProfile(profile.copy(body = body))

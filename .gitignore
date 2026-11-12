@@ -14,3 +14,11 @@ Thumbs.db
 
 # Local config
 local.properties
+
+# Sidecar engine binaries — large, downloaded per-OS, not version-controlled.
+sidecars/windows/whisper/
+sidecars/windows/llama/
+sidecars/macos-x64/whisper/
+sidecars/macos-x64/llama/
+sidecars/macos-arm64/whisper/
+sidecars/macos-arm64/llama/

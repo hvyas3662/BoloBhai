@@ -9,7 +9,7 @@ import java.nio.file.Path
  */
 object LlamaLauncher {
     fun launch(port: Int, modelPath: Path): Process? {
-        val exe = Sidecars.binary("llama-server") ?: return null
+        val exe = Sidecars.llamaServer() ?: return null
         if (!Files.exists(modelPath)) return null
         return ProcessBuilder(
             exe.toString(),

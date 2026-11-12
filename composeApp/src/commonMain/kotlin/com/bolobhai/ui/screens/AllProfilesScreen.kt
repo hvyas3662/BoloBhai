@@ -18,7 +18,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.bolobhai.app.AppState
 import com.bolobhai.domain.Profile
 import com.bolobhai.ui.components.BoloButton
+import com.bolobhai.ui.components.BoloTextField
 import com.bolobhai.ui.components.ButtonVariant
 import com.bolobhai.ui.theme.Bolo
 import com.bolobhai.ui.theme.BoloShapes
@@ -118,7 +118,7 @@ private fun Editor(appState: AppState, profile: Profile, slot: Int?, profileCoun
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Name", style = Bolo.type.sectionLabel, color = c.muted)
-        OutlinedTextField(name, { name = it }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        BoloTextField(name, { name = it }, modifier = Modifier.fillMaxWidth())
 
         Text("File", style = Bolo.type.sectionLabel, color = c.muted)
         Text(profile.fileName, style = Bolo.type.mono, color = c.muted)
@@ -130,10 +130,11 @@ private fun Editor(appState: AppState, profile: Profile, slot: Int?, profileCoun
         }
 
         Text("System prompt (Markdown, optional YAML frontmatter)", style = Bolo.type.sectionLabel, color = c.muted)
-        OutlinedTextField(
+        BoloTextField(
             value = body, onValueChange = { body = it },
+            singleLine = false,
+            textStyle = Bolo.type.mono.copy(fontFamily = FontFamily.Monospace),
             modifier = Modifier.fillMaxWidth().heightIn(min = 180.dp),
-            textStyle = Bolo.type.mono.copy(fontFamily = FontFamily.Monospace, color = c.text),
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

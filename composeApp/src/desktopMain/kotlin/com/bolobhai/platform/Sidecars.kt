@@ -7,6 +7,9 @@ import kotlin.io.path.Path
 /**
  * Resolves a bundled sidecar binary (whisper-server, llama-server, bolobhai-mac-helper).
  *
+ * Each engine lives in its own subfolder (`whisper/`, `llama/`) with its own DLLs/dylibs, because
+ * whisper.cpp and llama.cpp ship different ggml versions that must not collide in one folder.
+ *
  * When packaged, Compose copies `sidecars/<os>/` into the app and exposes it via the
  * `compose.application.resources.dir` system property, so the binaries live inside the install
  * folder next to the app (BoloBhai.md §17). In dev we fall back to the repo's `sidecars/<os>/`.
@@ -14,16 +17,22 @@ import kotlin.io.path.Path
 object Sidecars {
     private val isWindows = System.getProperty("os.name").lowercase().contains("win")
 
-    /** Platform binary name for [base] (adds `.exe` on Windows), resolved path or null if absent. */
-    fun binary(base: String): Path? {
+    fun whisperServer(): Path? = resolve("whisper", "whisper-server")
+    fun llamaServer(): Path? = resolve("llama", "llama-server")
+    fun macHelper(): Path? = resolve(null, "bolobhai-mac-helper")
+
+    private fun resolve(subdir: String?, base: String): Path? {
         val name = if (isWindows) "$base.exe" else base
-        return candidates(name).firstOrNull { Files.exists(it) }
+        return candidates(subdir, name).firstOrNull { Files.exists(it) }
     }
 
-    private fun candidates(name: String): List<Path> = buildList {
-        System.getProperty("compose.application.resources.dir")?.let { add(Path(it, name)) }
-        add(Path("sidecars", osDir(), name))          // repo root when running from there
-        add(Path("..", "sidecars", osDir(), name))    // or from the module dir
+    private fun candidates(subdir: String?, name: String): List<Path> {
+        val rel = if (subdir != null) arrayOf(subdir, name) else arrayOf(name)
+        return buildList {
+            System.getProperty("compose.application.resources.dir")?.let { add(Path(it, *rel)) }
+            add(Path("sidecars", osDir(), *rel))       // repo root when running from there
+            add(Path("..", "sidecars", osDir(), *rel))  // or from the module dir
+        }
     }
 
     private fun osDir(): String {

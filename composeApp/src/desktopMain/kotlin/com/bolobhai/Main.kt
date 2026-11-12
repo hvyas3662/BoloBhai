@@ -224,5 +224,5 @@ fun main() = application {
 
 /** Bundled Swift helper, resolved like the other sidecars (BoloBhai.md §17). */
 private fun macHelperBinary() =
-    com.bolobhai.platform.Sidecars.binary("bolobhai-mac-helper")
+    com.bolobhai.platform.Sidecars.macHelper()
         ?: Path("sidecars", "macos-arm64", "bolobhai-mac-helper")

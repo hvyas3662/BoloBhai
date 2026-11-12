@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,6 +31,7 @@ import com.bolobhai.data.Correction
 import com.bolobhai.data.Dictionary
 import com.bolobhai.domain.applyCorrections
 import com.bolobhai.ui.components.BoloButton
+import com.bolobhai.ui.components.BoloTextField
 import com.bolobhai.ui.components.ButtonVariant
 import com.bolobhai.ui.theme.Bolo
 import com.bolobhai.ui.theme.BoloShapes
@@ -73,11 +73,7 @@ private fun CustomWordsCard(dict: Dictionary, onChange: (Dictionary) -> Unit) {
             input = ""
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = input, onValueChange = { input = it }, singleLine = true,
-                placeholder = { Text("e.g. Kubernetes", style = Bolo.type.body, color = c.muted) },
-                modifier = Modifier.width(260.dp),
-            )
+            BoloTextField(input, { input = it }, placeholder = "e.g. Kubernetes", modifier = Modifier.width(260.dp))
             BoloButton("Add", variant = ButtonVariant.Primary, onClick = { add() })
         }
     }
@@ -104,11 +100,9 @@ private fun CorrectionsCard(dict: Dictionary, onChange: (Dictionary) -> Unit) {
             wrong = ""; right = ""
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(wrong, { wrong = it }, singleLine = true, modifier = Modifier.width(200.dp),
-                placeholder = { Text("Wrong (heard)", style = Bolo.type.body, color = c.muted) })
+            BoloTextField(wrong, { wrong = it }, placeholder = "Wrong (heard)", modifier = Modifier.width(200.dp))
             Text("→", style = Bolo.type.body, color = c.muted)
-            OutlinedTextField(right, { right = it }, singleLine = true, modifier = Modifier.width(200.dp),
-                placeholder = { Text("Right", style = Bolo.type.body, color = c.muted) })
+            BoloTextField(right, { right = it }, placeholder = "Right", modifier = Modifier.width(200.dp))
             BoloButton("Add", variant = ButtonVariant.Primary, onClick = { add() })
         }
     }
@@ -119,11 +113,7 @@ private fun TryItCard(dict: Dictionary) {
     val c = Bolo.colors
     var input by remember { mutableStateOf("") }
     Card("Try it", "See how corrections rewrite a transcript.") {
-        OutlinedTextField(
-            value = input, onValueChange = { input = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Type a raw transcript…", style = Bolo.type.body, color = c.muted) },
-        )
+        BoloTextField(input, { input = it }, placeholder = "Type a raw transcript…", singleLine = false, modifier = Modifier.fillMaxWidth())
         Text("AFTER DICTIONARY", style = Bolo.type.sectionLabel, color = c.muted)
         Box(Modifier.fillMaxWidth().clip(BoloShapes.card).background(c.blueSoft).padding(14.dp)) {
             Text(applyCorrections(input, dict).ifBlank { "—" }, style = Bolo.type.body, color = c.text)
