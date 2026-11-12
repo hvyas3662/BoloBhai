@@ -278,6 +278,7 @@ class HotkeyController(
             finishToast("Couldn't transcribe — audio saved to History")
             return
         }
+        com.bolobhai.log.Logger.info("whisper transcript: \"${transcript.take(120)}\"")
         if (transcript.isBlank()) {
             finishToast("Didn't catch that")
             return

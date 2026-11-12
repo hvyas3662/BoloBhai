@@ -14,8 +14,10 @@ class ProcessSupervisor(
     private val launch: () -> Process?,
     private val healthCheck: suspend () -> Boolean,
     private val backoff: BackoffPolicy = BackoffPolicy(),
-    private val healthRetryMs: Long = 200,
-    private val maxHealthChecks: Int = 25,
+    private val healthRetryMs: Long = 500,
+    // Large models load slowly on CPU (whisper ~10 s, llama ~5 s), and the server only answers
+    // /health once loaded — so wait up to ~2 min before giving up and restarting.
+    private val maxHealthChecks: Int = 240,
     private val delayer: suspend (Long) -> Unit = { delay(it) },
 ) {
     private val _status = MutableStateFlow(SidecarStatus.Stopped)
