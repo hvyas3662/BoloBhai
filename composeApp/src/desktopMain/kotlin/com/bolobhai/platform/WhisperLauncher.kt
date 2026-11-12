@@ -15,6 +15,8 @@ object WhisperLauncher {
         exe = Sidecars.whisperServer(),
         missingHint = "sidecars/<os>/whisper/whisper-server",
         modelPath = modelPath,
-        args = listOf("--host", "127.0.0.1", "--port", port.toString(), "-m", modelPath.toString(), "--flash-attn"),
+        // No --flash-attn: on the CPU backend it fails to encode ("failed to encode" -> empty
+        // transcript). Flash attention is only for Metal/CUDA builds.
+        args = listOf("--host", "127.0.0.1", "--port", port.toString(), "-m", modelPath.toString()),
     )
 }
