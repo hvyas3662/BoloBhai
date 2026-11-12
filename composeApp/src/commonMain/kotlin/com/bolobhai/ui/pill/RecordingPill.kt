@@ -90,9 +90,9 @@ private fun RecordingContent(state: PillUiState, onStop: () -> Unit, onCancel: (
     if (state.phase == PillPhase.HandsFree) SlotSection(state)
     ProfileName(state.profileShort)
     if (state.phase == PillPhase.HandsFree) {
-        CircleButton(c.blue, c.onAccent, BoloIcons.Mic, "Stop and process", onStop)
+        CircleButton(c.blue, c.onAccent, BoloIcons.Stop, "Stop and process", onStop)
     }
-    CircleButton(c.card2, c.muted, BoloIcons.Mic, "Cancel recording (Esc)", onCancel)
+    CircleButton(c.card2, c.muted, BoloIcons.Close, "Cancel recording (Esc)", onCancel)
 }
 
 @Composable

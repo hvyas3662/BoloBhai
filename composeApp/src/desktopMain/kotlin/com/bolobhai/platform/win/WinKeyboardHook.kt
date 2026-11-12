@@ -93,11 +93,9 @@ class WinKeyboardHook(
                 if (down) onInput(HotkeyInput.Esc) else isRecording()
             }
             RawKey.Other -> {
-                // Alt + another key (Alt+Tab, Alt+F4…) passes through and cancels the gesture.
-                if (dictationDown && gestureActive) {
-                    altCombined = true
-                    onInput(HotkeyInput.Esc)
-                }
+                // Alt + another key passes through untouched and keeps recording. We only note the
+                // combo so the Alt key-up skips menu-suppression (Windows already saw a combo).
+                if (dictationDown && gestureActive) altCombined = true
                 false
             }
         }

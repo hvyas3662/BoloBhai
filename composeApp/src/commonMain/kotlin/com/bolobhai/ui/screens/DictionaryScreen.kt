@@ -8,8 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -49,8 +52,10 @@ fun DictionaryScreen(appState: AppState) {
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(32.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            CustomWordsCard(dict) { appState.saveDictionary(it) }
-            CorrectionsCard(dict) { appState.saveDictionary(it) }
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                CustomWordsCard(dict, Modifier.weight(1f).fillMaxHeight()) { appState.saveDictionary(it) }
+                CorrectionsCard(dict, Modifier.weight(1f).fillMaxHeight()) { appState.saveDictionary(it) }
+            }
             TryItCard(dict)
         }
     }
@@ -58,10 +63,10 @@ fun DictionaryScreen(appState: AppState) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CustomWordsCard(dict: Dictionary, onChange: (Dictionary) -> Unit) {
+private fun CustomWordsCard(dict: Dictionary, modifier: Modifier = Modifier, onChange: (Dictionary) -> Unit) {
     val c = Bolo.colors
     var input by remember { mutableStateOf("") }
-    Card("Custom words", "Passed to Whisper as its initial prompt.") {
+    Card("Custom words", "Passed to Whisper as its initial prompt.", modifier) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             dict.customWords.forEach { word ->
                 Chip(word) { onChange(dict.copy(customWords = dict.customWords - word)) }
@@ -80,11 +85,11 @@ private fun CustomWordsCard(dict: Dictionary, onChange: (Dictionary) -> Unit) {
 }
 
 @Composable
-private fun CorrectionsCard(dict: Dictionary, onChange: (Dictionary) -> Unit) {
+private fun CorrectionsCard(dict: Dictionary, modifier: Modifier = Modifier, onChange: (Dictionary) -> Unit) {
     val c = Bolo.colors
     var wrong by remember { mutableStateOf("") }
     var right by remember { mutableStateOf("") }
-    Card("Corrections", "Applied after transcription, before the LLM.") {
+    Card("Corrections", "Applied after transcription, before the LLM.", modifier) {
         dict.corrections.forEach { corr ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(corr.wrong, style = Bolo.type.body, color = c.muted, textDecoration = TextDecoration.LineThrough)
@@ -122,10 +127,10 @@ private fun TryItCard(dict: Dictionary) {
 }
 
 @Composable
-private fun Card(title: String, subtitle: String, body: @Composable () -> Unit) {
+private fun Card(title: String, subtitle: String, modifier: Modifier = Modifier, body: @Composable () -> Unit) {
     val c = Bolo.colors
     Column(
-        Modifier.fillMaxWidth().clip(BoloShapes.card).background(c.card).border(1.dp, c.border, BoloShapes.card).padding(20.dp),
+        modifier.fillMaxWidth().clip(BoloShapes.card).background(c.card).border(1.dp, c.border, BoloShapes.card).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(title, style = Bolo.type.h2, color = c.text)

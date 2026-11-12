@@ -213,17 +213,22 @@ class HotkeyController(
     private fun startRecording(mode: RecMode, now: Long) {
         recordingStartMs = now
         levels = List(14) { 0f }
-        try {
-            recorder.start(appState.settings.value.microphone) { level -> levels = (levels.drop(1) + level) }
-        } catch (_: Exception) {
-            // §14: no microphone -> cancel the gesture and tell the user.
-            onInput(HotkeyInput.Esc)
-            appState.toast("No microphone — check Settings › Audio")
-            return
-        }
-        if (appState.settings.value.sounds) Sounds.start()
+        // Show the pill instantly; opening the mic line can take tens of ms, so do it off the
+        // hook thread — otherwise the pill appears with a visible delay.
         _pill.value = buildPill(toPhase(mode))
         startTicker()
+        scope.launch {
+            try {
+                recorder.start(appState.settings.value.microphone) { level -> levels = (levels.drop(1) + level) }
+            } catch (e: Exception) {
+                // §14: no microphone -> cancel the gesture and tell the user.
+                com.bolobhai.log.Logger.error("recorder.start failed: ${e.message}")
+                onInput(HotkeyInput.Esc)
+                appState.toast("No microphone — check Settings › Audio")
+                return@launch
+            }
+            if (appState.settings.value.sounds) Sounds.start()
+        }
     }
 
     private fun runPipeline() {
@@ -233,58 +238,80 @@ class HotkeyController(
         val createdAt = System.currentTimeMillis()
         val durationMs = createdAt - recordingStartMs
         scope.launch {
-            val pcm = recorder.stop()
-            if (whisperSupervisor.status.value != SidecarStatus.Ready) {
-                finishFailed("Speech engine not installed")
+            val pcm = try {
+                recorder.stop()
+            } catch (e: Exception) {
+                com.bolobhai.log.Logger.error("recorder.stop failed: ${e.message}")
+                finishFailed("Recording failed — see Logs")
                 return@launch
             }
-            val settings = appState.settings.value
-            val dict = appState.dictionary.value
             val wav = pcm16ToWav(pcm)
-            val transcript = try {
-                whisper.transcribe(wav, settings.language, prompt = whisperPrompt(dict))
-            } catch (_: Exception) {
-                // §9 whisper failed -> nothing pasted, audio kept, History status stt_failed.
-                save(wav, createdAt, durationMs, raw = "", status = "stt_failed",
-                    version = NewVersion(null, "—", "", null, null))
-                finishToast("Couldn't transcribe — audio saved to History")
-                return@launch
+            com.bolobhai.log.Logger.info("pipeline: ${durationMs}ms audio, ${wav.size} bytes")
+            try {
+                runStages(wav, createdAt, durationMs)
+            } catch (e: Exception) {
+                // Any unexpected failure is now visible (pill + log + saved) instead of silent.
+                com.bolobhai.log.Logger.error("pipeline failed: ${e}")
+                runCatching {
+                    save(wav, createdAt, durationMs, raw = "", status = "stt_failed",
+                        version = NewVersion(null, "—", "", null, null))
+                }
+                finishFailed("Something went wrong — see Logs")
             }
-            if (transcript.isBlank()) {
-                finishToast("Didn't catch that")
-                return@launch
-            }
-            val corrected = applyCorrections(transcript, dict)
-            val profile = activeProfile()
+        }
+    }
 
-            if (settings.postProcessing && profile != null && llamaSupervisor.status.value == SidecarStatus.Ready) {
-                val started = System.currentTimeMillis()
-                val raw = withTimeoutOrNull(15_000) { llama.complete(profile.body, corrected) }
-                val cleaned = raw?.let { cleanupLlmOutput(it) }
-                if (!cleaned.isNullOrBlank()) {
-                    paste(cleaned)
-                    save(wav, createdAt, durationMs, corrected, status = "ok",
-                        version = NewVersion(profile.fileName, profile.name, cleaned,
-                            settings.activeLlmModel, System.currentTimeMillis() - started))
-                    finishPasted()
-                } else {
-                    // §9: LLM failed/timeout -> paste the corrected raw transcript, show Failed.
-                    paste(capitalizeFirst(corrected))
-                    save(wav, createdAt, durationMs, corrected, status = "llm_failed",
-                        version = NewVersion(profile.fileName, profile.name, capitalizeFirst(corrected), null, null))
-                    finishFailed("LLM timeout · raw text pasted")
-                }
-            } else {
-                // §14: user wanted post-processing but the LLM model is missing -> one-time notice.
-                if (settings.postProcessing && profile != null && !llmMissingNotified) {
-                    llmMissingNotified = true
-                    appState.toast("LLM model missing — pasting Whisper text. Add it in Models.")
-                }
-                paste(capitalizeFirst(corrected))
+    private suspend fun runStages(wav: ByteArray, createdAt: Long, durationMs: Long) {
+        if (whisperSupervisor.status.value != SidecarStatus.Ready) {
+            finishFailed("Speech engine not installed")
+            return
+        }
+        val settings = appState.settings.value
+        val dict = appState.dictionary.value
+        val transcript = try {
+            whisper.transcribe(wav, settings.language, prompt = whisperPrompt(dict))
+        } catch (e: Exception) {
+            // §9 whisper failed -> nothing pasted, audio kept, History status stt_failed.
+            com.bolobhai.log.Logger.error("whisper transcribe failed: ${e.message}")
+            save(wav, createdAt, durationMs, raw = "", status = "stt_failed",
+                version = NewVersion(null, "—", "", null, null))
+            finishToast("Couldn't transcribe — audio saved to History")
+            return
+        }
+        if (transcript.isBlank()) {
+            finishToast("Didn't catch that")
+            return
+        }
+        val corrected = applyCorrections(transcript, dict)
+        val profile = activeProfile()
+
+        if (settings.postProcessing && profile != null && llamaSupervisor.status.value == SidecarStatus.Ready) {
+            val started = System.currentTimeMillis()
+            val raw = withTimeoutOrNull(15_000) { llama.complete(profile.body, corrected) }
+            val cleaned = raw?.let { cleanupLlmOutput(it) }
+            if (!cleaned.isNullOrBlank()) {
+                paste(cleaned)
                 save(wav, createdAt, durationMs, corrected, status = "ok",
-                    version = NewVersion(null, "Raw (no LLM)", capitalizeFirst(corrected), null, null))
+                    version = NewVersion(profile.fileName, profile.name, cleaned,
+                        settings.activeLlmModel, System.currentTimeMillis() - started))
                 finishPasted()
+            } else {
+                // §9: LLM failed/timeout -> paste the corrected raw transcript, show Failed.
+                paste(capitalizeFirst(corrected))
+                save(wav, createdAt, durationMs, corrected, status = "llm_failed",
+                    version = NewVersion(profile.fileName, profile.name, capitalizeFirst(corrected), null, null))
+                finishFailed("LLM timeout · raw text pasted")
             }
+        } else {
+            // §14: user wanted post-processing but the LLM model is missing -> one-time notice.
+            if (settings.postProcessing && profile != null && !llmMissingNotified) {
+                llmMissingNotified = true
+                appState.toast("LLM model missing — pasting Whisper text. Add it in Models.")
+            }
+            paste(capitalizeFirst(corrected))
+            save(wav, createdAt, durationMs, corrected, status = "ok",
+                version = NewVersion(null, "Raw (no LLM)", capitalizeFirst(corrected), null, null))
+            finishPasted()
         }
     }
 

@@ -75,6 +75,14 @@ object BoloIcons {
         "Play",
         "M6 3v18l15-9z",
     )
+    val Close = strokeIcon(
+        "Close",
+        "M18 6 6 18 M6 6l12 12",
+    )
+    val Stop = strokeIcon(
+        "Stop",
+        "M7 7h10v10H7z",
+    )
     val Pause = strokeIcon(
         "Pause",
         "M8 4v16 M16 4v16",
