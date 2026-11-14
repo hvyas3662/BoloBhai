@@ -48,4 +48,20 @@ class ProcessSupervisorTest {
         // initial attempt + 3 backoff retries (1s,2s,5s) = 4 launches
         assertEquals(4, launches)
     }
+
+    @Test
+    fun gpuNeverHealthy_fallsBackToCpuLaunch_andBecomesReady() = runBlocking {
+        var gpuLaunches = 0
+        var cpuLaunches = 0
+        val s = ProcessSupervisor(
+            launch = { gpuLaunches++; FakeProcess() },      // GPU: never healthy
+            fallbackLaunch = { cpuLaunches++; FakeProcess() },
+            healthCheck = { cpuLaunches > 0 },              // CPU process passes health
+            maxHealthChecks = 2,
+            delayer = {},
+        )
+        assertEquals(SidecarStatus.Ready, s.start())
+        assertEquals(1, gpuLaunches)  // tried GPU once
+        assertEquals(1, cpuLaunches)  // then fell back to CPU
+    }
 }

@@ -10,13 +10,18 @@ import java.nio.file.Path
  * own output are sent to [com.bolobhai.log.Logger] so they show up in the Logs panel.
  */
 object WhisperLauncher {
-    fun launch(port: Int, modelPath: Path): Process? = SidecarProcess.launch(
-        name = "whisper",
-        exe = Sidecars.whisperServer(),
-        missingHint = "sidecars/<os>/whisper/whisper-server",
-        modelPath = modelPath,
-        // No --flash-attn: on the CPU backend it fails to encode ("failed to encode" -> empty
-        // transcript). Flash attention is only for Metal/CUDA builds.
-        args = listOf("--host", "127.0.0.1", "--port", port.toString(), "-m", modelPath.toString()),
-    )
+    /** [backend] "cuda"/"metal" add --flash-attn; on "cpu"/"vulkan"/"" it must stay off. */
+    fun launch(port: Int, modelPath: Path, backend: String = ""): Process? {
+        // Flash attention is only valid on Metal/CUDA builds; on CPU it fails to encode
+        // ("failed to encode" -> empty transcript), and the Vulkan build doesn't support it either.
+        val base = listOf("--host", "127.0.0.1", "--port", port.toString(), "-m", modelPath.toString())
+        val args = if (backend == "cuda" || backend == "metal") base + "--flash-attn" else base
+        return SidecarProcess.launch(
+            name = "whisper",
+            exe = Sidecars.whisperServer(),
+            missingHint = "sidecars/<os>/whisper/whisper-server",
+            modelPath = modelPath,
+            args = args,
+        )
+    }
 }

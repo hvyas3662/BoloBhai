@@ -17,6 +17,9 @@ import kotlin.io.path.Path
 object Sidecars {
     private val isWindows = System.getProperty("os.name").lowercase().contains("win")
 
+    /** Set at startup to `<app-data>/sidecars`; backends downloaded at runtime land here and win. */
+    var downloadedRoot: Path? = null
+
     fun whisperServer(): Path? = resolve("whisper", "whisper-server")
     fun llamaServer(): Path? = resolve("llama", "llama-server")
     fun macHelper(): Path? = resolve(null, "bolobhai-mac-helper")
@@ -29,13 +32,14 @@ object Sidecars {
     private fun candidates(subdir: String?, name: String): List<Path> {
         val rel = if (subdir != null) arrayOf(subdir, name) else arrayOf(name)
         return buildList {
+            downloadedRoot?.let { add(Path(it.toString(), osDir(), *rel)) }
             System.getProperty("compose.application.resources.dir")?.let { add(Path(it, *rel)) }
             add(Path("sidecars", osDir(), *rel))       // repo root when running from there
             add(Path("..", "sidecars", osDir(), *rel))  // or from the module dir
         }
     }
 
-    private fun osDir(): String {
+    fun osDir(): String {
         val os = System.getProperty("os.name").lowercase()
         val arch = System.getProperty("os.arch").lowercase()
         return when {

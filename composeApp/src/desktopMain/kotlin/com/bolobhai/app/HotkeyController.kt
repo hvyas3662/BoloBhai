@@ -52,6 +52,10 @@ class HotkeyController(
     private val pasteShortcut: String,
     launchWhisper: (port: Int) -> Process?,
     launchLlama: (port: Int) -> Process?,
+    // CPU-args launchers; the supervisor falls back to these if the GPU launch never gets healthy
+    // (e.g. a low-VRAM iGPU can't fit the model). Default to the primary when GPU isn't in play.
+    launchWhisperCpu: (port: Int) -> Process? = launchWhisper,
+    launchLlamaCpu: (port: Int) -> Process? = launchLlama,
     private val paste: (String) -> Unit,
     private val audioDir: Path,
 ) {
@@ -65,6 +69,7 @@ class HotkeyController(
     private val whisper = WhisperClient("http://127.0.0.1:$whisperPort")
     private val whisperSupervisor = ProcessSupervisor(
         launch = { launchWhisper(whisperPort) },
+        fallbackLaunch = { launchWhisperCpu(whisperPort) },
         healthCheck = { whisper.health() },
     )
 
@@ -72,6 +77,7 @@ class HotkeyController(
     private val llama = LlamaClient("http://127.0.0.1:$llamaPort")
     private val llamaSupervisor = ProcessSupervisor(
         launch = { launchLlama(llamaPort) },
+        fallbackLaunch = { launchLlamaCpu(llamaPort) },
         healthCheck = { llama.health() },
     )
 

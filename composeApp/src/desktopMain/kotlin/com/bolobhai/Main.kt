@@ -20,6 +20,7 @@ import com.bolobhai.app.Screen
 import com.bolobhai.data.DictionaryRepo
 import com.bolobhai.data.FileSettingsRepo
 import com.bolobhai.app.ModelsController
+import com.bolobhai.app.SidecarsController
 import com.bolobhai.data.HistoryRepo
 import com.bolobhai.data.ModelCatalog
 import com.bolobhai.data.ModelRepo
@@ -63,6 +64,18 @@ fun main() = application {
     val modelsController = remember {
         ModelsController(appState, ModelRepo(platform.appDataRoot().resolve("models")), ModelCatalog.load().models, appScope)
     }
+    val sidecarsController = remember {
+        val sidecarsDir = platform.appDataRoot().resolve("sidecars")
+        com.bolobhai.platform.Sidecars.downloadedRoot = sidecarsDir
+        SidecarsController(
+            appState,
+            com.bolobhai.data.SidecarRepo(sidecarsDir),
+            com.bolobhai.data.SidecarCatalog.load(),
+            os = com.bolobhai.platform.Sidecars.osDir(),
+            backend = com.bolobhai.platform.GpuDetect.backend(),
+            appScope,
+        )
+    }
     val theme by appState.theme.collectAsState()
     val settings by appState.settings.collectAsState()
     val isWindows = platform.id == "windows"
@@ -80,12 +93,28 @@ fun main() = application {
                 WhisperLauncher.launch(
                     port,
                     platform.appDataRoot().resolve("models").resolve(appState.settings.value.activeWhisperModel),
+                    appState.settings.value.sttBackend,
                 )
             },
             launchLlama = { port ->
                 LlamaLauncher.launch(
                     port,
                     platform.appDataRoot().resolve("models").resolve(appState.settings.value.activeLlmModel),
+                    appState.settings.value.llmBackend,
+                )
+            },
+            launchWhisperCpu = { port ->
+                WhisperLauncher.launch(
+                    port,
+                    platform.appDataRoot().resolve("models").resolve(appState.settings.value.activeWhisperModel),
+                    "cpu",
+                )
+            },
+            launchLlamaCpu = { port ->
+                LlamaLauncher.launch(
+                    port,
+                    platform.appDataRoot().resolve("models").resolve(appState.settings.value.activeLlmModel),
+                    "cpu",
                 )
             },
             paste = when {
@@ -205,7 +234,7 @@ fun main() = application {
             if (settings.onboardingDone) {
                 Shell(appState, hotkeyLabel, modelsController, statusLine, whisperReady)
             } else {
-                OnboardingScreen(appState, modelsController, hotkeyLabel)
+                OnboardingScreen(appState, modelsController, sidecarsController, hotkeyLabel)
             }
         }
     }

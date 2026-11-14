@@ -160,6 +160,8 @@ class AppState(
     fun setActiveWhisperModel(file: String) = persist { it.copy(activeWhisperModel = file) }
     fun setActiveLlmModel(file: String) = persist { it.copy(activeLlmModel = file) }
     fun setOnboardingDone(done: Boolean) = persist { it.copy(onboardingDone = done) }
+    fun setSttBackend(backend: String) = persist { it.copy(sttBackend = backend) }
+    fun setLlmBackend(backend: String) = persist { it.copy(llmBackend = backend) }
 
     /** Launch-at-login toggles the OS entry via [applyLaunchAtLogin] then persists (BoloBhai.md §13.6). */
     var applyLaunchAtLogin: ((Boolean) -> Unit)? = null

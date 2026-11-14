@@ -1,0 +1,16 @@
+{
+  "_note": "Host each zip as a GitHub Release asset (free, direct download). Fill url + real sizeBytes + sha256 (sha optional; empty skips verify). engine x backend x os must match what the app detects.",
+  "sidecars": [
+    { "engine": "whisper", "backend": "cpu",    "os": "windows", "url": "https://github.com/OWNER/REPO/releases/download/sidecars-v1/whisper-win-cpu.zip",    "sizeBytes": 30000000,  "sha256": "" },
+    { "engine": "llama",   "backend": "cpu",    "os": "windows", "url": "https://github.com/OWNER/REPO/releases/download/sidecars-v1/llama-win-cpu.zip",      "sizeBytes": 25000000,  "sha256": "" },
+
+    { "engine": "whisper", "backend": "cuda",   "os": "windows", "url": "https://github.com/OWNER/REPO/releases/download/sidecars-v1/whisper-win-cuda.zip",   "sizeBytes": 250000000, "sha256": "" },
+    { "engine": "llama",   "backend": "cuda",   "os": "windows", "url": "https://github.com/OWNER/REPO/releases/download/sidecars-v1/llama-win-cuda.zip",     "sizeBytes": 300000000, "sha256": "" },
+
+    { "engine": "whisper", "backend": "vulkan", "os": "windows", "url": "https://github.com/OWNER/REPO/releases/download/sidecars-v1/whisper-win-vulkan.zip", "sizeBytes": 45000000,  "sha256": "" },
+    { "engine": "llama",   "backend": "vulkan", "os": "windows", "url": "https://github.com/OWNER/REPO/releases/download/sidecars-v1/llama-win-vulkan.zip",   "sizeBytes": 45000000,  "sha256": "" },
+
+    { "engine": "whisper", "backend": "metal",  "os": "macos-arm64", "url": "https://github.com/OWNER/REPO/releases/download/sidecars-v1/whisper-mac-arm64.zip", "sizeBytes": 20000000, "sha256": "" },
+    { "engine": "llama",   "backend": "metal",  "os": "macos-arm64", "url": "https://github.com/OWNER/REPO/releases/download/sidecars-v1/llama-mac-arm64.zip",   "sizeBytes": 20000000, "sha256": "" }
+  ]
+}

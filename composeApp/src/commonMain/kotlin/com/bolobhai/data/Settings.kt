@@ -41,4 +41,7 @@ data class Settings(
     val activeSlot: Int = 1,
     val windowBounds: WindowBounds? = null,
     val debugLogging: Boolean = false,
+    // Installed sidecar backend per engine ("cpu"/"cuda"/"vulkan"/"metal"); "" = bundled/none.
+    val sttBackend: String = "",
+    val llmBackend: String = "",
 )

@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.asStateFlow
 class ProcessSupervisor(
     private val launch: () -> Process?,
     private val healthCheck: suspend () -> Boolean,
+    // Used from the first retry on, when the primary (GPU) launch never gets healthy — e.g. a
+    // low-VRAM iGPU can't fit the model with -ngl 99 and the server crashes. Falls back to CPU args.
+    private val fallbackLaunch: (() -> Process?)? = null,
     private val backoff: BackoffPolicy = BackoffPolicy(),
     private val healthRetryMs: Long = 500,
     // Large models load slowly on CPU (whisper ~10 s, llama ~5 s), and the server only answers
@@ -29,7 +32,7 @@ class ProcessSupervisor(
         var attempt = 0
         while (true) {
             _status.value = SidecarStatus.Starting
-            val p = launch()
+            val p = (if (attempt > 0 && fallbackLaunch != null) fallbackLaunch else launch)()
             if (p == null) {
                 _status.value = SidecarStatus.NotInstalled
                 return SidecarStatus.NotInstalled

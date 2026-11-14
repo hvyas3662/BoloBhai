@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.bolobhai.app.AppState
 import com.bolobhai.app.ModelsController
+import com.bolobhai.app.SidecarsController
 import com.bolobhai.app.Screen
 import com.bolobhai.audio.AudioRecorder
 import com.bolobhai.domain.ModelState
@@ -50,7 +51,7 @@ import kotlinx.coroutines.delay
 
 /** First-run onboarding, 5 steps inside the main window (BoloBhai.md §13.8). */
 @Composable
-fun OnboardingScreen(appState: AppState, models: ModelsController, hotkeyLabel: String) {
+fun OnboardingScreen(appState: AppState, models: ModelsController, sidecars: SidecarsController, hotkeyLabel: String) {
     val c = Bolo.colors
     var step by remember { mutableStateOf(0) }
     val steps = listOf("Welcome", "Permissions", "Hotkey", "Models", "Ready")
@@ -99,7 +100,7 @@ fun OnboardingScreen(appState: AppState, models: ModelsController, hotkeyLabel: 
                     0 -> Welcome()
                     1 -> Permissions(micOk)
                     2 -> HotkeyStep(hotkeyLabel)
-                    3 -> ModelsStep(defaults, models)
+                    3 -> ModelsStep(defaults, models, sidecars)
                     4 -> Ready()
                 }
             }
@@ -157,7 +158,7 @@ private fun HotkeyStep(hotkeyLabel: String) = Column(verticalArrangement = Arran
 }
 
 @Composable
-private fun ModelsStep(defaults: List<com.bolobhai.app.ModelUi>, controller: ModelsController) = Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+private fun ModelsStep(defaults: List<com.bolobhai.app.ModelUi>, controller: ModelsController, sidecars: SidecarsController) = Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
     val total = defaults.sumOf { it.entry.sizeBytes }
     val freeBytes = remember { runCatching { java.io.File(System.getProperty("user.home")).usableSpace }.getOrDefault(Long.MAX_VALUE) }
     val enoughDisk = freeBytes >= total
@@ -192,6 +193,41 @@ private fun ModelsStep(defaults: List<com.bolobhai.app.ModelUi>, controller: Mod
         else -> BoloButton("Download ${formatBytes(total)}", variant = ButtonVariant.Primary, enabled = enoughDisk, onClick = {
             defaults.filter { it.state != ModelState.Installed }.forEach { controller.download(it.entry) }
         })
+    }
+
+    EngineSection(sidecars)
+}
+
+/** Downloads the whisper + llama builds matched to this machine's GPU (BoloBhai.md §16/§17). */
+@Composable
+private fun EngineSection(sidecars: SidecarsController) {
+    val rows by sidecars.rows.collectAsState()
+    if (rows.isEmpty()) return // no catalog entry for this backend — bundled binaries are used
+    val backend = rows.first().entry.backend
+    val engineTotal = rows.sumOf { it.entry.sizeBytes }
+    val anyDownloading = rows.any { it.downloading }
+    val allInstalled = rows.all { it.installed }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Inference engine · ${backend.uppercase()}", style = Bolo.type.h2, color = Bolo.colors.text)
+        rows.forEach { ui ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("${ui.entry.engine} (${ui.entry.backend})", style = Bolo.type.bodyMedium, color = Bolo.colors.text)
+                when {
+                    ui.installed -> Text("Installed", style = Bolo.type.meta, color = Bolo.colors.green)
+                    ui.downloading -> Text("Downloading…", style = Bolo.type.meta, color = Bolo.colors.muted)
+                    else -> Text("Waiting", style = Bolo.type.meta, color = Bolo.colors.muted)
+                }
+            }
+            ui.progress?.let { p ->
+                LinearProgressIndicator(progress = { if (p.total > 0) p.done.toFloat() / p.total else 0f }, modifier = Modifier.fillMaxWidth().height(6.dp))
+                Text(formatProgress(p.done, p.total, p.bytesPerSec), style = Bolo.type.monoSmall, color = Bolo.colors.muted)
+            }
+        }
+        when {
+            allInstalled -> Text("Engine ready for your ${backend.uppercase()} GPU.", style = Bolo.type.bodyMedium, color = Bolo.colors.green)
+            anyDownloading -> BoloButton("Pause", onClick = { sidecars.pause() })
+            else -> BoloButton("Download engine ${formatBytes(engineTotal)}", variant = ButtonVariant.Primary, onClick = { sidecars.installMissing() })
+        }
     }
 }
 

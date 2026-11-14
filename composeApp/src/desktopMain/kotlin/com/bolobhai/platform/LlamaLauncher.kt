@@ -8,14 +8,20 @@ import java.nio.file.Path
  * Failures + server output go to [com.bolobhai.log.Logger].
  */
 object LlamaLauncher {
-    fun launch(port: Int, modelPath: Path): Process? = SidecarProcess.launch(
-        name = "llama",
-        exe = Sidecars.llamaServer(),
-        missingHint = "sidecars/<os>/llama/llama-server",
-        modelPath = modelPath,
-        args = listOf(
-            "--host", "127.0.0.1", "--port", port.toString(), "-m", modelPath.toString(),
-            "-c", "4096", "-ngl", "99", "--parallel", "1",
-        ),
-    )
+    /** [backend] "cuda"/"vulkan"/"metal" offload all layers to the GPU; "cpu"/"" stay on CPU. */
+    fun launch(port: Int, modelPath: Path, backend: String = ""): Process? {
+        val ngl = if (backend in GPU_BACKENDS) "99" else "0"
+        return SidecarProcess.launch(
+            name = "llama",
+            exe = Sidecars.llamaServer(),
+            missingHint = "sidecars/<os>/llama/llama-server",
+            modelPath = modelPath,
+            args = listOf(
+                "--host", "127.0.0.1", "--port", port.toString(), "-m", modelPath.toString(),
+                "-c", "4096", "-ngl", ngl, "--parallel", "1",
+            ),
+        )
+    }
 }
+
+internal val GPU_BACKENDS = setOf("cuda", "vulkan", "metal")
