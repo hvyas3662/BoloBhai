@@ -30,6 +30,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -99,7 +102,46 @@ class HotkeyController(
         scope.launch { whisperSupervisor.status.collect { com.bolobhai.log.Logger.info("whisper status: $it") } }
         scope.launch { llamaSupervisor.status.collect { com.bolobhai.log.Logger.info("llama status: $it") } }
         scope.launch { whisperSupervisor.start() }
-        scope.launch { llamaSupervisor.start() }
+        // Low-VRAM mode loads llama on demand (freeing whisper's VRAM first); otherwise keep it warm.
+        if (!appState.settings.value.lowVramSwap) scope.launch { llamaSupervisor.start() }
+
+        // Live-apply model / backend / low-VRAM changes: restart the sidecars with the new settings
+        // instead of forcing an app restart. The launchers read settings fresh on each (re)start.
+        scope.launch {
+            appState.settings
+                .map { listOf(it.activeWhisperModel, it.activeLlmModel, it.sttBackend, it.llmBackend, it.lowVramSwap.toString()) }
+                .distinctUntilChanged()
+                .drop(1) // skip the value present at startup
+                .collect { restartSidecars() }
+        }
+    }
+
+    /** Stop both sidecars and bring them back under the current settings (whisper always; llama warm
+     *  only outside low-VRAM mode, where it loads per dictation). */
+    private fun restartSidecars() {
+        whisperSupervisor.stop()
+        llamaSupervisor.stop()
+        scope.launch { whisperSupervisor.start() }
+        if (!appState.settings.value.lowVramSwap) scope.launch { llamaSupervisor.start() }
+    }
+
+    /**
+     * Run [block] with llama ready. In low-VRAM mode: stop whisper (free ~1.6 GB VRAM), load llama
+     * fully on the GPU, run, then unload llama and warm whisper back up for the next dictation.
+     * Returns null if llama can't be made ready. In normal mode: run only when llama is already warm.
+     */
+    private suspend fun <T> withLlamaReady(block: suspend () -> T): T? {
+        if (!appState.settings.value.lowVramSwap) {
+            return if (llamaSupervisor.status.value == SidecarStatus.Ready) block() else null
+        }
+        whisperSupervisor.stop()
+        val ready = llamaSupervisor.start() == SidecarStatus.Ready
+        return try {
+            if (ready) block() else null
+        } finally {
+            llamaSupervisor.stop()
+            scope.launch { whisperSupervisor.start() }
+        }
     }
 
     /** Kill both sidecar servers (call on full app quit so nothing is left running). */
@@ -165,8 +207,7 @@ class HotkeyController(
 
     /** Run the profile's prompt with the 15 s timeout; null on timeout/error/empty/not-ready. */
     private suspend fun runLlm(profile: Profile, text: String): String? {
-        if (llamaSupervisor.status.value != SidecarStatus.Ready) return null
-        val raw = withTimeoutOrNull(15_000) { llama.complete(profile.body, text) } ?: return null
+        val raw = withLlamaReady { withTimeoutOrNull(15_000) { llama.complete(profile.body, text) } } ?: return null
         return cleanupLlmOutput(raw).takeIf { it.isNotBlank() }
     }
 
@@ -268,6 +309,11 @@ class HotkeyController(
     }
 
     private suspend fun runStages(wav: ByteArray, createdAt: Long, durationMs: Long) {
+        // In low-VRAM mode whisper may still be warming back up after the previous dictation's swap.
+        if (whisperSupervisor.status.value != SidecarStatus.Ready && appState.settings.value.lowVramSwap) {
+            var waited = 0
+            while (whisperSupervisor.status.value != SidecarStatus.Ready && waited < 15_000) { delay(250); waited += 250 }
+        }
         if (whisperSupervisor.status.value != SidecarStatus.Ready) {
             finishFailed("Speech engine not installed")
             return
@@ -292,9 +338,12 @@ class HotkeyController(
         val corrected = applyCorrections(transcript, dict)
         val profile = activeProfile()
 
-        if (settings.postProcessing && profile != null && llamaSupervisor.status.value == SidecarStatus.Ready) {
+        // Normal mode needs llama already warm; low-VRAM mode loads it on demand inside withLlamaReady.
+        val canCleanup = settings.postProcessing && profile != null &&
+            (settings.lowVramSwap || llamaSupervisor.status.value == SidecarStatus.Ready)
+        if (canCleanup && profile != null) {
             val started = System.currentTimeMillis()
-            val raw = withTimeoutOrNull(15_000) { llama.complete(profile.body, corrected) }
+            val raw = withLlamaReady { withTimeoutOrNull(15_000) { llama.complete(profile.body, corrected) } }
             val cleaned = raw?.let { cleanupLlmOutput(it) }
             if (!cleaned.isNullOrBlank()) {
                 paste(cleaned)

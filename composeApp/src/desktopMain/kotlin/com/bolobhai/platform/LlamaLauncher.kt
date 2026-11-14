@@ -19,6 +19,9 @@ object LlamaLauncher {
             args = listOf(
                 "--host", "127.0.0.1", "--port", port.toString(), "-m", modelPath.toString(),
                 "-c", "4096", "-ngl", ngl, "--parallel", "1",
+                // Use the model's own Jinja chat template so per-request chat_template_kwargs apply
+                // (e.g. enable_thinking=false for Qwen3/3.5; without this they run to the token cap).
+                "--jinja",
             ),
         )
     }

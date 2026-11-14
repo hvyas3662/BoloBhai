@@ -29,6 +29,9 @@ data class Settings(
     val keepAudio: String = "30d",
     val language: String = "hi",
     val postProcessing: Boolean = true,
+    // Low-VRAM mode: run whisper and llama one at a time, freeing each other's GPU memory, so a
+    // small card (e.g. 4 GB) can fully offload the LLM. Costs a model (re)load per dictation.
+    val lowVramSwap: Boolean = false,
     val activeWhisperModel: String = "ggml-large-v3-turbo.bin",
     val activeLlmModel: String = "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
     val quickSlots: Map<String, String?> = mapOf(

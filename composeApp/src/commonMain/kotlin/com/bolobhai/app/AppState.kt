@@ -151,6 +151,7 @@ class AppState(
     var openProfilesFolder: (() -> Unit)? = null
 
     fun setPostProcessing(enabled: Boolean) = persist { it.copy(postProcessing = enabled) }
+    fun setLowVramSwap(enabled: Boolean) = persist { it.copy(lowVramSwap = enabled) }
     fun setLanguage(language: String) = persist { it.copy(language = language) }
     fun setHotkeyWindows(key: String) = persist { it.copy(hotkey = it.hotkey.copy(windows = key)) }
     fun setDoubleTapMs(ms: Int) = persist { it.copy(doubleTapMs = ms) }

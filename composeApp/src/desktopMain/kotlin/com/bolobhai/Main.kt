@@ -152,6 +152,11 @@ fun main() = application {
         appState.testProfileOp = controller::testProfile
         appState.openProfilesFolder = { platform.openFolder(profilesDir) }
         appState.applyLaunchAtLogin = platform::setLaunchAtLogin
+        // Keep the OS auto-start entry in sync with the setting on every launch. Packaged only: in
+        // dev the process command is the JVM, not the app exe. Windows-only in practice (mac no-op).
+        if (System.getProperty("compose.application.resources.dir") != null) {
+            platform.setLaunchAtLogin(appState.settings.value.launchAtLogin)
+        }
         appState.initProfiles()
         appState.loadHistory()
         appState.runAudioRetention()

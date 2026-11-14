@@ -80,7 +80,7 @@ class ModelsController(
     /** Make [entry] the active model for its kind (BoloBhai.md §13.5). */
     fun use(entry: ModelEntry) {
         if (entry.kind == "stt") appState.setActiveWhisperModel(entry.file) else appState.setActiveLlmModel(entry.file)
-        appState.toast("${entry.name} is now active · server restarts on next launch")
+        appState.toast("${entry.name} is now active · reloading…")
         refresh()
     }
 }

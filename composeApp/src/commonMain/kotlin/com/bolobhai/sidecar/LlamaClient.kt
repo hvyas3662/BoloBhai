@@ -21,6 +21,10 @@ private data class ChatRequest(
     val temperature: Double,
     val max_tokens: Int,
     val top_p: Double,
+    // Qwen3/Qwen3.5 are reasoning-capable: without this they emit a long <think> trace and run to the
+    // token cap on every call (slow, unusable for cleanup). Disabling it yields a direct answer.
+    // Harmless for templates that don't use the flag (llama.cpp just ignores the extra kwarg).
+    val chat_template_kwargs: Map<String, Boolean> = mapOf("enable_thinking" to false),
 )
 
 @Serializable

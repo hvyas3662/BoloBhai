@@ -158,78 +158,80 @@ private fun HotkeyStep(hotkeyLabel: String) = Column(verticalArrangement = Arran
 }
 
 @Composable
-private fun ModelsStep(defaults: List<com.bolobhai.app.ModelUi>, controller: ModelsController, sidecars: SidecarsController) = Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-    val total = defaults.sumOf { it.entry.sizeBytes }
+private fun ModelsStep(defaults: List<com.bolobhai.app.ModelUi>, controller: ModelsController, sidecars: SidecarsController) {
+    val c = Bolo.colors
+    val engineRows by sidecars.rows.collectAsState()
+
+    val modelsReady = defaults.isNotEmpty() && defaults.all { it.state == ModelState.Installed }
+    val engineReady = engineRows.all { it.installed } // empty catalog (bundled binaries) counts as ready
+    val allReady = modelsReady && engineReady
+
+    val pendingBytes = defaults.filterNot { it.state == ModelState.Installed }.sumOf { it.entry.sizeBytes } +
+        engineRows.filterNot { it.installed }.sumOf { it.entry.sizeBytes }
+    val anyDownloading = defaults.any { it.downloading } || engineRows.any { it.downloading }
     val freeBytes = remember { runCatching { java.io.File(System.getProperty("user.home")).usableSpace }.getOrDefault(Long.MAX_VALUE) }
-    val enoughDisk = freeBytes >= total
-    Text("Download models", style = Bolo.type.h2, color = Bolo.colors.text)
-    Text(
-        if (enoughDisk) "Needs ${formatBytes(total)} free disk · ${formatBytes(freeBytes)} available."
-        else "Not enough disk: needs ${formatBytes(total)}, only ${formatBytes(freeBytes)} free.",
-        style = Bolo.type.meta,
-        color = if (enoughDisk) Bolo.colors.muted else Bolo.colors.orange,
-    )
-    defaults.forEach { ui ->
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(ui.entry.name, style = Bolo.type.bodyMedium, color = Bolo.colors.text)
-                when {
-                    ui.state == ModelState.Installed -> Text("SHA-256 verified", style = Bolo.type.meta, color = Bolo.colors.green)
-                    ui.downloading -> Text("Downloading…", style = Bolo.type.meta, color = Bolo.colors.muted)
-                    else -> Text("Waiting", style = Bolo.type.meta, color = Bolo.colors.muted)
+    val enoughDisk = freeBytes >= pendingBytes
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Models & engine", style = Bolo.type.h2, color = c.text)
+
+        if (allReady) {
+            // Nothing to do: one calm confirmation instead of a list of buttons.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("✓", style = Bolo.type.onboardingTitle, color = c.green)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Sab ready", style = Bolo.type.bodyMedium, color = c.text)
+                    Text("Models downloaded · CUDA engine installed · SHA-256 verified.", style = Bolo.type.meta, color = c.muted)
                 }
             }
-            ui.progress?.let { p ->
-                LinearProgressIndicator(progress = { if (p.total > 0) p.done.toFloat() / p.total else 0f }, modifier = Modifier.fillMaxWidth().height(6.dp))
-                Text(formatProgress(p.done, p.total, p.bytesPerSec), style = Bolo.type.monoSmall, color = Bolo.colors.muted)
-            }
+            return
+        }
+
+        Text(
+            if (enoughDisk) "Needs ${formatBytes(pendingBytes)} · ${formatBytes(freeBytes)} free."
+            else "Not enough disk: needs ${formatBytes(pendingBytes)}, only ${formatBytes(freeBytes)} free.",
+            style = Bolo.type.meta,
+            color = if (enoughDisk) c.muted else c.orange,
+        )
+
+        defaults.forEach { ui ->
+            SetupRow(ui.entry.name, ui.state == ModelState.Installed, ui.downloading, ui.progress?.done, ui.progress?.total, ui.progress?.bytesPerSec)
+        }
+        engineRows.forEach { ui ->
+            SetupRow("Engine · ${ui.entry.engine}", ui.installed, ui.downloading, ui.progress?.done, ui.progress?.total, ui.progress?.bytesPerSec)
+        }
+
+        if (anyDownloading) {
+            BoloButton("Pause", onClick = {
+                defaults.filter { it.downloading }.forEach { controller.pause(it.entry) }
+                sidecars.pause()
+            })
+        } else {
+            BoloButton("Download ${formatBytes(pendingBytes)}", variant = ButtonVariant.Primary, enabled = enoughDisk, onClick = {
+                defaults.filter { it.state != ModelState.Installed }.forEach { controller.download(it.entry) }
+                sidecars.installMissing()
+            })
         }
     }
-    val anyDownloading = defaults.any { it.downloading }
-    val allInstalled = defaults.isNotEmpty() && defaults.all { it.state == ModelState.Installed }
-    when {
-        allInstalled -> Text("All models ready · SHA-256 verified.", style = Bolo.type.bodyMedium, color = Bolo.colors.green)
-        anyDownloading -> BoloButton("Pause", onClick = { defaults.filter { it.downloading }.forEach { controller.pause(it.entry) } })
-        else -> BoloButton("Download ${formatBytes(total)}", variant = ButtonVariant.Primary, enabled = enoughDisk, onClick = {
-            defaults.filter { it.state != ModelState.Installed }.forEach { controller.download(it.entry) }
-        })
-    }
-
-    EngineSection(sidecars)
 }
 
-/** Downloads the whisper + llama builds matched to this machine's GPU (BoloBhai.md §16/§17). */
+/** One model/engine line: name on the left, compact status on the right, progress bar while downloading. */
 @Composable
-private fun EngineSection(sidecars: SidecarsController) {
-    val rows by sidecars.rows.collectAsState()
-    if (rows.isEmpty()) return // no catalog entry for this backend — bundled binaries are used
-    val backend = rows.first().entry.backend
-    val engineTotal = rows.sumOf { it.entry.sizeBytes }
-    val anyDownloading = rows.any { it.downloading }
-    val allInstalled = rows.all { it.installed }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Inference engine · ${backend.uppercase()}", style = Bolo.type.h2, color = Bolo.colors.text)
-        rows.forEach { ui ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("${ui.entry.engine} (${ui.entry.backend})", style = Bolo.type.bodyMedium, color = Bolo.colors.text)
-                when {
-                    ui.installed -> Text("Installed", style = Bolo.type.meta, color = Bolo.colors.green)
-                    ui.downloading -> Text("Downloading…", style = Bolo.type.meta, color = Bolo.colors.muted)
-                    else -> Text("Waiting", style = Bolo.type.meta, color = Bolo.colors.muted)
-                }
-            }
-            ui.progress?.let { p ->
-                LinearProgressIndicator(progress = { if (p.total > 0) p.done.toFloat() / p.total else 0f }, modifier = Modifier.fillMaxWidth().height(6.dp))
-                Text(formatProgress(p.done, p.total, p.bytesPerSec), style = Bolo.type.monoSmall, color = Bolo.colors.muted)
+private fun SetupRow(name: String, installed: Boolean, downloading: Boolean, done: Long?, total: Long?, bytesPerSec: Long?) =
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(name, style = Bolo.type.bodyMedium, color = Bolo.colors.text)
+            when {
+                installed -> Text("✓ Ready", style = Bolo.type.meta, color = Bolo.colors.green)
+                downloading -> Text("Downloading…", style = Bolo.type.meta, color = Bolo.colors.muted)
+                else -> Text("Waiting", style = Bolo.type.meta, color = Bolo.colors.muted)
             }
         }
-        when {
-            allInstalled -> Text("Engine ready for your ${backend.uppercase()} GPU.", style = Bolo.type.bodyMedium, color = Bolo.colors.green)
-            anyDownloading -> BoloButton("Pause", onClick = { sidecars.pause() })
-            else -> BoloButton("Download engine ${formatBytes(engineTotal)}", variant = ButtonVariant.Primary, onClick = { sidecars.installMissing() })
+        if (done != null && total != null && bytesPerSec != null) {
+            LinearProgressIndicator(progress = { if (total > 0) done.toFloat() / total else 0f }, modifier = Modifier.fillMaxWidth().height(6.dp))
+            Text(formatProgress(done, total, bytesPerSec), style = Bolo.type.monoSmall, color = Bolo.colors.muted)
         }
     }
-}
 
 @Composable
 private fun Ready() = Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

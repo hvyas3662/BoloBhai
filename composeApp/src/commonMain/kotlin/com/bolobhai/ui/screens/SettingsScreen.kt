@@ -97,6 +97,16 @@ fun SettingsScreen(appState: AppState) {
                 }
             }
 
+            Card("Post-processing") {
+                LabeledSwitch("Clean up transcript with LLM", settings.postProcessing) { appState.setPostProcessing(it) }
+                LabeledSwitch("Low-VRAM mode · swap models per dictation", settings.lowVramSwap) { appState.setLowVramSwap(it) }
+                Text(
+                    "For small GPUs (≈4 GB): runs Whisper and the LLM one at a time so the LLM fully offloads. " +
+                        "Best quality, but adds a model (re)load each dictation.",
+                    style = Bolo.type.meta, color = Bolo.colors.muted,
+                )
+            }
+
             com.bolobhai.ui.LogsPanel(onToast = { appState.toast(it) })
         }
     }
