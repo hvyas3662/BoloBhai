@@ -66,6 +66,20 @@ class AppState(
     var retranscribeOp: (suspend (Dictation) -> Unit)? = null
     var retryOp: (suspend (Dictation) -> Unit)? = null
 
+    /** Transcribe raw PCM for onboarding's speak-and-verify step (#3); null if whisper isn't ready. */
+    var onboardingTranscribeOp: (suspend (ByteArray) -> String?)? = null
+
+    /** History item ids currently being re-processed — drives the per-card loader (#7). */
+    private val _reprocessing = MutableStateFlow<Set<Long>>(emptySet())
+    val reprocessing: StateFlow<Set<Long>> = _reprocessing.asStateFlow()
+
+    /** Run the wired re-process op while marking [item] in-flight so its card shows a loader. */
+    suspend fun runReprocess(item: Dictation, profile: Profile) {
+        val op = reprocessOp ?: return
+        _reprocessing.value = _reprocessing.value + item.id
+        try { op(item, profile) } finally { _reprocessing.value = _reprocessing.value - item.id }
+    }
+
     private val _theme = MutableStateFlow(themeModeOf(_settings.value.theme))
     val theme: StateFlow<ThemeMode> = _theme.asStateFlow()
 
@@ -153,8 +167,9 @@ class AppState(
     fun setPostProcessing(enabled: Boolean) = persist { it.copy(postProcessing = enabled) }
     fun setLowVramSwap(enabled: Boolean) = persist { it.copy(lowVramSwap = enabled) }
     fun setLanguage(language: String) = persist { it.copy(language = language) }
+    fun setOutputLanguages(key: String) = persist { it.copy(outputLanguages = key) }
+    fun setOutputScript(key: String) = persist { it.copy(outputScript = key) }
     fun setHotkeyWindows(key: String) = persist { it.copy(hotkey = it.hotkey.copy(windows = key)) }
-    fun setDoubleTapMs(ms: Int) = persist { it.copy(doubleTapMs = ms) }
     fun setMicrophone(name: String?) = persist { it.copy(microphone = name) }
     fun setSounds(enabled: Boolean) = persist { it.copy(sounds = enabled) }
     fun setKeepAudio(value: String) = persist { it.copy(keepAudio = value) }

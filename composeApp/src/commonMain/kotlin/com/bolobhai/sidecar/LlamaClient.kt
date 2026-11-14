@@ -2,6 +2,7 @@ package com.bolobhai.sidecar
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -35,11 +36,13 @@ private data class ChatResponse(val choices: List<ChatChoice> = emptyList())
 
 /**
  * OpenAI-compatible client for the llama.cpp server sidecar (BoloBhai.md §2/§9).
- * Post-processing settings: temperature 0.2, max_tokens 1024, top_p 0.9.
+ * Post-processing settings: temperature 0.2, max_tokens 4096, top_p 0.9. 120 s request timeout.
  */
 class LlamaClient(
     private val baseUrl: String,
-    private val client: HttpClient = HttpClient(CIO),
+    private val client: HttpClient = HttpClient(CIO) {
+        install(HttpTimeout) { requestTimeoutMillis = 120_000; socketTimeoutMillis = 120_000 }
+    },
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -54,7 +57,7 @@ class LlamaClient(
         val request = ChatRequest(
             messages = listOf(ChatMessage("system", system), ChatMessage("user", user)),
             temperature = 0.2,
-            max_tokens = 1024,
+            max_tokens = 4096,
             top_p = 0.9,
         )
         val response = client.post("$baseUrl/v1/chat/completions") {

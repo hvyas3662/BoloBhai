@@ -3,6 +3,9 @@ package com.bolobhai.app
 import com.bolobhai.data.ModelEntry
 import com.bolobhai.data.ModelRepo
 import com.bolobhai.domain.ModelState
+import com.bolobhai.domain.SystemHardware
+import com.bolobhai.domain.capacityExceeded
+import com.bolobhai.domain.parseRamRequirement
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -11,13 +14,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** One model row's UI state (BoloBhai.md §13.5). */
+/** One model row's UI state (BoloBhai.md §13.5). [exceedsCapacity]: too big for this machine (#8). */
 data class ModelUi(
     val entry: ModelEntry,
     val state: ModelState,
     val active: Boolean,
     val downloading: Boolean,
     val progress: ModelRepo.Progress?,
+    val exceedsCapacity: Boolean = false,
 )
 
 /**
@@ -29,6 +33,7 @@ class ModelsController(
     private val repo: ModelRepo,
     private val entries: List<ModelEntry>,
     private val scope: CoroutineScope,
+    val hardware: SystemHardware,
 ) {
     private val jobs = mutableMapOf<String, Job>()
     private val progress = mutableMapOf<String, ModelRepo.Progress>()
@@ -40,9 +45,21 @@ class ModelsController(
 
     fun refresh() {
         val s = appState.settings.value
+        val limit = hardware.limitBytes
+        // The other kind's active model stays resident alongside this one (unless swap mode).
+        fun otherActiveRam(kind: String): Long? {
+            val otherFile = if (kind == "stt") s.activeLlmModel else s.activeWhisperModel
+            return entries.firstOrNull { it.file == otherFile }?.let { parseRamRequirement(it.ram) }
+        }
         _models.value = entries.map { e ->
             val active = e.file == (if (e.kind == "stt") s.activeWhisperModel else s.activeLlmModel)
-            ModelUi(e, repo.stateOf(e), active, jobs.containsKey(e.id), progress[e.id])
+            val exceeds = capacityExceeded(
+                modelRamBytes = parseRamRequirement(e.ram),
+                otherActiveRamBytes = otherActiveRam(e.kind),
+                swap = s.lowVramSwap,
+                limitBytes = limit,
+            )
+            ModelUi(e, repo.stateOf(e), active, jobs.containsKey(e.id), progress[e.id], exceeds)
         }
     }
 

@@ -18,7 +18,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,16 +59,6 @@ fun SettingsScreen(appState: AppState) {
                 Card("Hotkey", Modifier.weight(1f).fillMaxHeight()) {
                     Segmented(listOf("Fn", "Alt", "Right Ctrl"), settings.hotkey.windows) { appState.setHotkeyWindows(it) }
                     Text("Fn works only if your laptop reports it to Windows. Takes effect on restart.", style = Bolo.type.meta, color = Bolo.colors.muted)
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Double-tap", style = Bolo.type.body, color = Bolo.colors.text)
-                        Slider(
-                            value = settings.doubleTapMs.toFloat(),
-                            onValueChange = { appState.setDoubleTapMs((it / 25).toInt() * 25) },
-                            valueRange = 250f..600f, steps = (600 - 250) / 25 - 1,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Text("${settings.doubleTapMs} ms", style = Bolo.type.mono, color = Bolo.colors.muted)
-                    }
                 }
                 Card("Audio", Modifier.weight(1f).fillMaxHeight()) {
                     val devices = remember { listOf<String?>(null) + AudioRecorder.inputDevices() }
@@ -95,6 +84,23 @@ fun SettingsScreen(appState: AppState) {
                     }
                     BoloButton("Clear all history", variant = ButtonVariant.Danger, onClick = { confirmClear = true })
                 }
+            }
+
+            Card("Cleanup language") {
+                Text("Languages you speak", style = Bolo.type.sectionLabel, color = Bolo.colors.muted)
+                SegmentedMapped(
+                    com.bolobhai.domain.languageOptions.associate { it.key to it.label },
+                    settings.outputLanguages,
+                ) { appState.setOutputLanguages(it) }
+                Text("Output script", style = Bolo.type.sectionLabel, color = Bolo.colors.muted)
+                SegmentedMapped(
+                    com.bolobhai.domain.ScriptRule.entries.associate { it.key to it.label },
+                    settings.outputScript,
+                ) { appState.setOutputScript(it) }
+                Text(
+                    "Controls how the LLM cleans up your dictation (e.g. Hinglish in Roman letters). Takes effect on the next dictation.",
+                    style = Bolo.type.meta, color = Bolo.colors.muted,
+                )
             }
 
             Card("Post-processing") {

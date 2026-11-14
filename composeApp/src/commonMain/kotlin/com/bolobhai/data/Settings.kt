@@ -28,6 +28,9 @@ data class Settings(
     val launchAtLogin: Boolean = true,
     val keepAudio: String = "30d",
     val language: String = "hi",
+    // LLM cleanup output language set + script (domain/SystemPrompt.kt). Defaults = Hinglish user.
+    val outputLanguages: String = "hi-en",
+    val outputScript: String = "romanized",
     val postProcessing: Boolean = true,
     // Low-VRAM mode: run whisper and llama one at a time, freeing each other's GPU memory, so a
     // small card (e.g. 4 GB) can fully offload the LLM. Costs a model (re)load per dictation.

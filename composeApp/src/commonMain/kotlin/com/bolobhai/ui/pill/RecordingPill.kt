@@ -149,7 +149,9 @@ private fun Waveform(levels: List<Float>) {
         val gap = 2.dp.toPx()
         val barWidth = ((size.width - gap * (bars - 1)) / bars).coerceAtLeast(1f)
         levels.forEachIndexed { i, level ->
-            val h = (level.coerceIn(0f, 1f) * size.height).coerceAtLeast(2f)
+            // Boost intensity: perceptual sqrt curve + gain so quiet speech still moves the bars.
+            val boosted = (kotlin.math.sqrt(level.coerceIn(0f, 1f)) * 1.4f).coerceIn(0f, 1f)
+            val h = (boosted * size.height).coerceAtLeast(2f)
             val x = i * (barWidth + gap)
             drawRect(
                 color = color,

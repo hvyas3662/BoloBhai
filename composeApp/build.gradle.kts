@@ -64,7 +64,7 @@ compose.desktop {
             appResourcesRootDir.set(project.rootProject.layout.projectDirectory.dir("sidecars"))
 
             windows {
-                iconFile.set(project.rootProject.file("resources/icons/image_94bc1ad5 1.ico"))
+                iconFile.set(project.rootProject.file("resources/icons/bolobhai.ico"))
                 menuGroup = "Bolo Bhai"
                 perUserInstall = true
                 shortcut = true
@@ -72,7 +72,7 @@ compose.desktop {
                 upgradeUuid = "4b1d6f8e-9c2a-4e37-9a1e-7c2b3d4e5f60"
             }
             macOS {
-                iconFile.set(project.rootProject.file("resources/icons/amqh1-fc9m6.icns"))
+                iconFile.set(project.rootProject.file("resources/icons/bolobhai.icns"))
                 bundleID = "com.elevationsoft.bolobhai.app"
             }
         }

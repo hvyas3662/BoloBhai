@@ -9,6 +9,7 @@ import com.bolobhai.domain.HotkeyStateMachine
 import com.bolobhai.domain.Profile
 import com.bolobhai.domain.RecMode
 import com.bolobhai.domain.applyCorrections
+import com.bolobhai.domain.buildSystemPrompt
 import com.bolobhai.domain.capitalizeFirst
 import com.bolobhai.domain.cleanupLlmOutput
 import com.bolobhai.domain.whisperPrompt
@@ -31,7 +32,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -46,7 +46,7 @@ import kotlin.io.path.createDirectories
 /**
  * Ties the hotkey hook to the gesture state machine, recorder, pill and the whisper + llama
  * sidecars, then pastes the result (BoloBhai.md §9). Post-processing runs the active profile's
- * body as the LLM system prompt with a 15 s timeout; on failure/timeout the corrected raw
+ * body as the LLM system prompt with a 120 s timeout; on failure/timeout the corrected raw
  * transcript is pasted instead. Sidecars absent => graceful degradation (no crash).
  */
 class HotkeyController(
@@ -105,23 +105,45 @@ class HotkeyController(
         // Low-VRAM mode loads llama on demand (freeing whisper's VRAM first); otherwise keep it warm.
         if (!appState.settings.value.lowVramSwap) scope.launch { llamaSupervisor.start() }
 
-        // Live-apply model / backend / low-VRAM changes: restart the sidecars with the new settings
-        // instead of forcing an app restart. The launchers read settings fresh on each (re)start.
+        // Live-apply model / backend / low-VRAM changes: restart only the sidecar whose settings
+        // actually changed, so e.g. switching the LLM model doesn't needlessly reload Whisper (#9).
+        // The launchers read settings fresh on each (re)start.
         scope.launch {
+            var prev: SidecarKeys? = null
             appState.settings
-                .map { listOf(it.activeWhisperModel, it.activeLlmModel, it.sttBackend, it.llmBackend, it.lowVramSwap.toString()) }
+                .map { SidecarKeys(it.activeWhisperModel, it.sttBackend, it.activeLlmModel, it.llmBackend, it.lowVramSwap) }
                 .distinctUntilChanged()
-                .drop(1) // skip the value present at startup
-                .collect { restartSidecars() }
+                .collect { keys ->
+                    val p = prev
+                    prev = keys
+                    if (p == null) return@collect // skip the value present at startup
+                    if (keys.whisperModel != p.whisperModel || keys.sttBackend != p.sttBackend || keys.swap != p.swap) {
+                        restartWhisper()
+                    }
+                    if (keys.llmModel != p.llmModel || keys.llmBackend != p.llmBackend || keys.swap != p.swap) {
+                        restartLlama()
+                    }
+                }
         }
     }
 
-    /** Stop both sidecars and bring them back under the current settings (whisper always; llama warm
-     *  only outside low-VRAM mode, where it loads per dictation). */
-    private fun restartSidecars() {
+    /** Model/backend settings that, when changed, require a sidecar restart (#9). */
+    private data class SidecarKeys(
+        val whisperModel: String,
+        val sttBackend: String,
+        val llmModel: String,
+        val llmBackend: String,
+        val swap: Boolean,
+    )
+
+    private fun restartWhisper() {
         whisperSupervisor.stop()
-        llamaSupervisor.stop()
         scope.launch { whisperSupervisor.start() }
+    }
+
+    /** Llama stays warm only outside low-VRAM mode, where it loads per dictation. */
+    private fun restartLlama() {
+        llamaSupervisor.stop()
         if (!appState.settings.value.lowVramSwap) scope.launch { llamaSupervisor.start() }
     }
 
@@ -205,10 +227,26 @@ class HotkeyController(
         return runLlm(profile, item.rawTranscript)
     }
 
-    /** Run the profile's prompt with the 15 s timeout; null on timeout/error/empty/not-ready. */
+    /** Onboarding speak-and-verify (#3): transcribe raw PCM; null if whisper isn't ready or fails. */
+    suspend fun transcribeForOnboarding(pcm: ByteArray): String? {
+        if (whisperSupervisor.status.value != SidecarStatus.Ready) return null
+        return try {
+            whisper.transcribe(pcm16ToWav(pcm), appState.settings.value.language, prompt = "").takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Run the profile's prompt with the 120 s timeout; null on timeout/error/empty/not-ready. */
     private suspend fun runLlm(profile: Profile, text: String): String? {
-        val raw = withLlamaReady { withTimeoutOrNull(15_000) { llama.complete(profile.body, text) } } ?: return null
+        val raw = withLlamaReady { withTimeoutOrNull(120_000) { llama.complete(systemPromptFor(profile), text) } } ?: return null
         return cleanupLlmOutput(raw).takeIf { it.isNotBlank() }
+    }
+
+    /** The locked base system prompt (rendered from output-language settings) with the profile on top (#1). */
+    private fun systemPromptFor(profile: Profile): String {
+        val s = appState.settings.value
+        return buildSystemPrompt(profile.body, s.outputLanguages, s.outputScript)
     }
 
     private fun llmVersion(profile: Profile, output: String) =
@@ -343,7 +381,7 @@ class HotkeyController(
             (settings.lowVramSwap || llamaSupervisor.status.value == SidecarStatus.Ready)
         if (canCleanup && profile != null) {
             val started = System.currentTimeMillis()
-            val raw = withLlamaReady { withTimeoutOrNull(15_000) { llama.complete(profile.body, corrected) } }
+            val raw = withLlamaReady { withTimeoutOrNull(120_000) { llama.complete(systemPromptFor(profile), corrected) } }
             val cleaned = raw?.let { cleanupLlmOutput(it) }
             if (!cleaned.isNullOrBlank()) {
                 paste(cleaned)

@@ -7,7 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Tray
@@ -42,7 +41,6 @@ import com.bolobhai.ui.Shell
 import com.bolobhai.resources.Res
 import com.bolobhai.resources.app_icon
 import org.jetbrains.compose.resources.painterResource
-import com.bolobhai.ui.components.BoloIcons
 import com.bolobhai.ui.pill.PillWindow
 import com.bolobhai.ui.theme.BoloTheme
 
@@ -62,7 +60,7 @@ fun main() = application {
     val appScope = rememberCoroutineScope()
     val watcher = remember { ProfilesWatcher(profilesDir, appScope) }
     val modelsController = remember {
-        ModelsController(appState, ModelRepo(platform.appDataRoot().resolve("models")), ModelCatalog.load().models, appScope)
+        ModelsController(appState, ModelRepo(platform.appDataRoot().resolve("models")), ModelCatalog.load().models, appScope, com.bolobhai.platform.HardwareDetect.detect())
     }
     val sidecarsController = remember {
         val sidecarsDir = platform.appDataRoot().resolve("sidecars")
@@ -150,6 +148,7 @@ fun main() = application {
         appState.retranscribeOp = controller::retranscribe
         appState.retryOp = controller::retry
         appState.testProfileOp = controller::testProfile
+        appState.onboardingTranscribeOp = controller::transcribeForOnboarding
         appState.openProfilesFolder = { platform.openFolder(profilesDir) }
         appState.applyLaunchAtLogin = platform::setLaunchAtLogin
         // Keep the OS auto-start entry in sync with the setting on every launch. Packaged only: in
@@ -190,16 +189,16 @@ fun main() = application {
     LaunchedEffect(windowVisible) { if (isMac) macHelper.setActivationPolicy(windowVisible) }
 
     Tray(
-        icon = rememberVectorPainter(BoloIcons.Mic),
+        icon = painterResource(Res.drawable.app_icon),
         tooltip = "Bolo Bhai",
         menu = {
             Item("Start dictation ($hotkeyLabel)") { controller.startHandsFree() }
             Separator()
             for (slot in 1..5) {
-                val file = settings.quickSlots[slot.toString()]
-                val name = file?.let { f -> profiles.firstOrNull { it.fileName == f }?.name } ?: "Empty"
+                val file = settings.quickSlots[slot.toString()] ?: continue
+                val name = profiles.firstOrNull { it.fileName == file }?.name ?: "Empty"
                 val marker = if (slot == activeSlot) "● " else "   "
-                Item("$marker[$slot] $name   $hotkeyLabel+$slot", enabled = file != null) { appState.setActiveSlot(slot) }
+                Item("$marker[$slot] $name   $hotkeyLabel+$slot") { appState.setActiveSlot(slot) }
             }
             Separator()
             Item("Open History") {

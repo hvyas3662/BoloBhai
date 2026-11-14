@@ -115,9 +115,10 @@ fun Sidebar(appState: AppState, hotkeyLabel: String, statusLine: String, ready: 
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 for (slot in 1..5) {
                     val assigned = settings.quickSlots[slot.toString()] != null
+                    if (!assigned) continue
                     SlotKey(
                         number = slot,
-                        visual = slotKeyVisual(slot, activeSlot, assigned),
+                        visual = slotKeyVisual(slot, activeSlot, assigned = true),
                         sizeDp = 32.dp,
                         onClick = { appState.setActiveSlot(slot) },
                     )

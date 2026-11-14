@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
@@ -182,7 +184,10 @@ private fun HistoryCard(
     var expanded by remember(item.id) { mutableStateOf(false) }
     var showOriginal by remember(item.id) { mutableStateOf(false) }
     val version = item.versions.getOrNull(selectedVersion) ?: item.current
+    val reprocessing by appState.reprocessing.collectAsState()
+    val busy = item.id in reprocessing
 
+    Box(Modifier.fillMaxWidth()) {
     Column(
         Modifier.fillMaxWidth().clip(BoloShapes.card).background(c.card)
             .border(1.dp, if (failed) c.redBorder else c.border, BoloShapes.card)
@@ -238,6 +243,14 @@ private fun HistoryCard(
             MoreMenu(appState, item, profiles, scope, onDeleteRequest = { showDeleteConfirm = true })
         }
     }
+        if (busy) {
+            CircularProgressIndicator(
+                Modifier.align(Alignment.TopEnd).padding(12.dp).size(18.dp),
+                strokeWidth = 2.dp,
+                color = c.blue,
+            )
+        }
+    }
 
     if (showDeleteConfirm) {
         ConfirmDialog(
@@ -268,7 +281,7 @@ private fun MoreMenu(
             if (reprocessOpen) profiles.forEach { p ->
                 DropdownMenuItem(
                     text = { Text("   ${p.name}") },
-                    onClick = { open = false; scope.launch { appState.reprocessOp?.invoke(item, p) } },
+                    onClick = { open = false; scope.launch { appState.runReprocess(item, p) } },
                 )
             }
             DropdownMenuItem(
