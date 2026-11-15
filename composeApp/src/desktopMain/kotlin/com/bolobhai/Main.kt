@@ -43,7 +43,15 @@ import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import kotlin.io.path.Path
 
-fun main() = application {
+fun main() {
+    // One instance only: a second launch (e.g. double-tapping the shortcut) must not open a second
+    // window + tray + sidecar servers. Bail out silently if another instance holds the lock.
+    val root = currentPlatform().appDataRoot()
+    if (!com.bolobhai.platform.SingleInstance.acquire(root.resolve("bolobhai.lock"), root.resolve("bolobhai.port"))) return
+    appMain()
+}
+
+private fun appMain() = application {
     val platform = remember { currentPlatform() }
     val profilesDir = remember { platform.appDataRoot().resolve("profiles") }
     val audioDir = remember { platform.appDataRoot().resolve("audio") }
@@ -224,6 +232,18 @@ fun main() = application {
         icon = painterResource(Res.drawable.app_icon),
     ) {
         window.minimumSize = java.awt.Dimension(1100, 700)
+        // A second launch (double-tapped shortcut) signals us instead of opening its own window;
+        // surface ours on the AWT thread (§6.0).
+        LaunchedEffect(Unit) {
+            com.bolobhai.platform.SingleInstance.onActivate = {
+                javax.swing.SwingUtilities.invokeLater {
+                    windowVisible = true
+                    window.extendedState = window.extendedState and java.awt.Frame.ICONIFIED.inv()
+                    window.toFront()
+                    window.requestFocus()
+                }
+            }
+        }
         BoloTheme(mode = theme, systemDark = appState.systemDark) {
             if (settings.onboardingDone) {
                 Shell(appState, hotkeyLabel, modelsController, statusLine, whisperReady)

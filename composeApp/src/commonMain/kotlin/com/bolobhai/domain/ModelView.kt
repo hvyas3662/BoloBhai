@@ -1,5 +1,7 @@
 package com.bolobhai.domain
 
+import java.nio.file.Files
+import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.Locale
 
@@ -30,3 +32,18 @@ fun formatProgress(done: Long, total: Long, bytesPerSec: Long): String {
 
 fun sha256Hex(bytes: ByteArray): String =
     MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
+/** SHA-256 of [file], streamed in 64 KB chunks — model/sidecar files are GBs, never read whole
+ *  (a full read OOMs the JVM, which `catch (Exception)` can't catch, so the app crashes). */
+fun sha256HexOf(file: Path): String {
+    val md = MessageDigest.getInstance("SHA-256")
+    Files.newInputStream(file).use { input ->
+        val buf = ByteArray(1 shl 16)
+        while (true) {
+            val n = input.read(buf)
+            if (n < 0) break
+            md.update(buf, 0, n)
+        }
+    }
+    return md.digest().joinToString("") { "%02x".format(it) }
+}

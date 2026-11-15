@@ -2,7 +2,7 @@ package com.bolobhai.data
 
 import com.bolobhai.domain.ModelState
 import com.bolobhai.domain.modelState
-import com.bolobhai.domain.sha256Hex
+import com.bolobhai.domain.sha256HexOf
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.net.HttpURLConnection
@@ -81,7 +81,7 @@ class ModelRepo(private val dir: Path) {
         conn.disconnect()
 
         Files.move(part, file(entry), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        val sha = sha256Hex(Files.readAllBytes(file(entry)))
+        val sha = sha256HexOf(file(entry))
         Files.writeString(dir.resolve(entry.file + ".sha256"), sha)
         onProgress(Progress(have, total, 0))
         return sha
