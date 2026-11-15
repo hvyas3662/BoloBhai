@@ -16,7 +16,6 @@ import androidx.compose.ui.window.rememberWindowState
 import com.bolobhai.app.AppState
 import com.bolobhai.app.HotkeyController
 import com.bolobhai.app.ModelsController
-import com.bolobhai.app.Screen
 import com.bolobhai.app.SidecarsController
 import com.bolobhai.data.DictionaryRepo
 import com.bolobhai.data.FileSettingsRepo
@@ -127,8 +126,6 @@ fun main() = application {
         )
     }
     val pill by controller.pill.collectAsState()
-    val activeSlot by appState.activeSlot.collectAsState()
-    val profiles by appState.profiles.collectAsState()
     val whisperStatus by controller.whisperStatus.collectAsState()
     val llamaStatus by controller.llamaStatus.collectAsState()
     val whisperReady = whisperStatus == com.bolobhai.sidecar.SidecarStatus.Ready
@@ -203,28 +200,7 @@ fun main() = application {
         icon = painterResource(Res.drawable.app_icon),
         tooltip = "Bolo Bhai",
         menu = {
-            Item("Start dictation ($hotkeyLabel)") { controller.startHandsFree() }
-            Separator()
-            for (slot in 1..5) {
-                val file = settings.quickSlots[slot.toString()] ?: continue
-                val name = profiles.firstOrNull { it.fileName == file }?.name ?: "Empty"
-                val marker = if (slot == activeSlot) "● " else "   "
-                Item("$marker[$slot] $name   $hotkeyLabel+$slot") { appState.setActiveSlot(slot) }
-            }
-            Separator()
-            Item("Open History") {
-                appState.navigateTo(Screen.History)
-                windowVisible = true
-            }
-            Item("Open profiles folder") { platform.openFolder(profilesDir) }
-            Item("New profile…") {
-                appState.navigateTo(Screen.AllProfiles)
-                windowVisible = true
-            }
-            Item("Settings…") {
-                appState.navigateTo(Screen.Settings)
-                windowVisible = true
-            }
+            Item("Open App") { windowVisible = true }
             Separator()
             Item("Quit Bolo Bhai") {
                 hook?.stop()
