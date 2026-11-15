@@ -15,6 +15,8 @@ data class ModelEntry(
     val ram: String,
     val note: String? = null,
     val default: Boolean = false,
+    /** STT only: Whisper language codes this model supports; null = infer from the file name. */
+    val languages: List<String>? = null,
 )
 
 @Serializable

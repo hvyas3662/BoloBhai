@@ -15,11 +15,11 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.bolobhai.app.AppState
 import com.bolobhai.app.HotkeyController
+import com.bolobhai.app.ModelsController
 import com.bolobhai.app.Screen
+import com.bolobhai.app.SidecarsController
 import com.bolobhai.data.DictionaryRepo
 import com.bolobhai.data.FileSettingsRepo
-import com.bolobhai.app.ModelsController
-import com.bolobhai.app.SidecarsController
 import com.bolobhai.data.HistoryRepo
 import com.bolobhai.data.ModelCatalog
 import com.bolobhai.data.ModelRepo
@@ -32,17 +32,17 @@ import com.bolobhai.platform.currentPlatform
 import com.bolobhai.platform.mac.MacHelper
 import com.bolobhai.platform.win.WinKeyboardHook
 import com.bolobhai.platform.win.WinPaster
+import com.bolobhai.platform.win.dictationKeyFromSetting
+import com.bolobhai.resources.Res
+import com.bolobhai.resources.app_icon
+import com.bolobhai.ui.OnboardingScreen
+import com.bolobhai.ui.Shell
+import com.bolobhai.ui.pill.PillWindow
+import com.bolobhai.ui.theme.BoloTheme
+import org.jetbrains.compose.resources.painterResource
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import kotlin.io.path.Path
-import com.bolobhai.platform.win.dictationKeyFromSetting
-import com.bolobhai.ui.OnboardingScreen
-import com.bolobhai.ui.Shell
-import com.bolobhai.resources.Res
-import com.bolobhai.resources.app_icon
-import org.jetbrains.compose.resources.painterResource
-import com.bolobhai.ui.pill.PillWindow
-import com.bolobhai.ui.theme.BoloTheme
 
 fun main() = application {
     val platform = remember { currentPlatform() }
@@ -182,6 +182,14 @@ fun main() = application {
             ).also { it.start() }
         } else {
             null
+        }
+    }
+
+    // Rebind the dictation key live when the user changes it in Settings — no restart (§13.6).
+    LaunchedEffect(settings.hotkey.windows) {
+        if (isWindows) {
+            hook?.setDictationKey(dictationKeyFromSetting(settings.hotkey.windows))
+            controller.hotkeyLabel = settings.hotkey.windows
         }
     }
 

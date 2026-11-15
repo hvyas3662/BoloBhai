@@ -11,12 +11,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -36,10 +36,12 @@ import androidx.compose.ui.window.Dialog
 import com.bolobhai.app.AppState
 import com.bolobhai.app.ModelUi
 import com.bolobhai.app.ModelsController
+import com.bolobhai.domain.AUTO_DETECT
 import com.bolobhai.domain.ModelState
 import com.bolobhai.domain.SystemHardware
 import com.bolobhai.domain.formatBytes
 import com.bolobhai.domain.formatProgress
+import com.bolobhai.domain.spokenLanguagesFor
 import com.bolobhai.ui.components.BoloButton
 import com.bolobhai.ui.components.BoloIcons
 import com.bolobhai.ui.components.BoloTextField
@@ -75,16 +77,42 @@ fun ModelsScreen(appState: AppState, controller: ModelsController) {
                 KindSection("Post-processing LLM", models.filter { it.entry.kind == "llm" }, controller, Modifier.weight(1f).fillMaxHeight())
             }
 
-            SettingsCard {
-                Text("Spoken language", style = Bolo.type.sectionLabel, color = Bolo.colors.muted)
-                val langs = mapOf("hi" to "Hindi / Hinglish", "en" to "English", "auto" to "Auto-detect")
-                Segmented(langs, settings.language) { appState.setLanguage(it) }
-                if (settings.language == "auto") {
-                    Text("Auto-detect is not advised for Hinglish.", style = Bolo.type.meta, color = Bolo.colors.orange)
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                SettingsCard(Modifier.weight(1f).fillMaxHeight()) {
+                    Text("Spoken language", style = Bolo.type.h2, color = Bolo.colors.text)
+                    val activeStt = models.firstOrNull { it.entry.kind == "stt" && it.active }?.entry
+                        ?: models.firstOrNull { it.entry.kind == "stt" }?.entry
+                    val langs = spokenLanguagesFor(activeStt?.file, activeStt?.languages)
+                    val current = langs.firstOrNull { it.code == settings.language } ?: langs.firstOrNull()
+                    LanguagePicker(
+                        label = current?.label ?: settings.language,
+                        options = langs.map { it.label to it.code },
+                        onPick = { appState.setLanguage(it) },
+                    )
+                    Text(
+                        "Transcription uses this language in strict mode. The list reflects what the selected model supports.",
+                        style = Bolo.type.meta, color = Bolo.colors.muted,
+                    )
+                    if (settings.language == AUTO_DETECT) {
+                        Text("Auto-detect is not advised for Hinglish.", style = Bolo.type.meta, color = Bolo.colors.orange)
+                    }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Post-processing with LLM", style = Bolo.type.body, color = Bolo.colors.text)
-                    com.bolobhai.ui.components.BoloSwitch(settings.postProcessing) { appState.setPostProcessing(it) }
+
+                SettingsCard(Modifier.weight(1f).fillMaxHeight()) {
+                    Text("Post-processing", style = Bolo.type.h2, color = Bolo.colors.text)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Clean up transcript with LLM", style = Bolo.type.body, color = Bolo.colors.text)
+                        com.bolobhai.ui.components.BoloSwitch(settings.postProcessing) { appState.setPostProcessing(it) }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Low-VRAM mode · swap models per dictation", style = Bolo.type.body, color = Bolo.colors.text)
+                        com.bolobhai.ui.components.BoloSwitch(settings.lowVramSwap) { appState.setLowVramSwap(it) }
+                    }
+                    Text(
+                        "For small GPUs (≈4 GB): runs Whisper and the LLM one at a time so the LLM fully offloads. " +
+                            "Best quality, but adds a model (re)load each dictation.",
+                        style = Bolo.type.meta, color = Bolo.colors.muted,
+                    )
                 }
             }
         }
@@ -242,26 +270,59 @@ private fun Actions(ui: ModelUi, controller: ModelsController) {
 }
 
 @Composable
-private fun SettingsCard(body: @Composable () -> Unit) {
+private fun SettingsCard(modifier: Modifier = Modifier, body: @Composable () -> Unit) {
     val c = Bolo.colors
     Column(
-        Modifier.fillMaxWidth().clip(BoloShapes.card).background(c.card).border(1.dp, c.border, BoloShapes.card).padding(20.dp),
+        modifier.fillMaxWidth().clip(BoloShapes.card).background(c.card).border(1.dp, c.border, BoloShapes.card).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) { body() }
 }
 
+/** Searchable picker of spoken languages supported by the selected STT model. */
 @Composable
-private fun Segmented(labels: Map<String, String>, selected: String, onSelect: (String) -> Unit) {
+private fun LanguagePicker(label: String, options: List<Pair<String, String>>, onPick: (String) -> Unit) {
     val c = Bolo.colors
-    Row(Modifier.clip(BoloShapes.button).background(c.card2).border(1.dp, c.border, BoloShapes.button)) {
-        labels.forEach { (value, label) ->
-            val on = value == selected
-            Box(
-                Modifier.clip(BoloShapes.button)
-                    .background(if (on) c.blue else androidx.compose.ui.graphics.Color.Transparent)
-                    .clickable { onSelect(value) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            ) { Text(label, style = Bolo.type.button, color = if (on) c.onAccent else c.text) }
+    var open by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().clip(BoloShapes.input).background(c.input).border(1.dp, c.border, BoloShapes.input)
+            .clickable { open = true }.padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = Bolo.type.body, color = c.text, modifier = Modifier.weight(1f))
+        Icon(BoloIcons.ChevronDown, contentDescription = null, tint = c.muted, modifier = Modifier.size(18.dp))
+    }
+    if (open) LanguagePickerDialog(options, onPick) { open = false }
+}
+
+@Composable
+private fun LanguagePickerDialog(options: List<Pair<String, String>>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    val c = Bolo.colors
+    var query by remember { mutableStateOf("") }
+    val filtered = options.filter { query.isBlank() || it.first.contains(query, ignoreCase = true) }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.width(420.dp).heightIn(max = 560.dp).clip(BoloShapes.panelLarge).background(c.panel)
+                .border(1.dp, c.border, BoloShapes.panelLarge).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text("Choose language", style = Bolo.type.h2, color = c.text)
+            BoloTextField(query, { query = it }, placeholder = "Search languages…", modifier = Modifier.fillMaxWidth())
+            Column(
+                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                if (filtered.isEmpty()) Text("No languages match “$query”.", style = Bolo.type.meta, color = c.muted)
+                filtered.forEach { (text, value) ->
+                    Text(
+                        text, style = Bolo.type.body, color = c.text,
+                        modifier = Modifier.fillMaxWidth().clip(BoloShapes.button).clickable { onPick(value); onDismiss() }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                BoloButton("Close", onClick = onDismiss)
+            }
         }
     }
 }

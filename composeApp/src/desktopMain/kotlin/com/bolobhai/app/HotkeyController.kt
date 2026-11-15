@@ -3,6 +3,8 @@ package com.bolobhai.app
 import com.bolobhai.audio.AudioRecorder
 import com.bolobhai.audio.Sounds
 import com.bolobhai.audio.pcm16ToWav
+import com.bolobhai.data.Dictation
+import com.bolobhai.data.NewVersion
 import com.bolobhai.domain.HotkeyEffect
 import com.bolobhai.domain.HotkeyInput
 import com.bolobhai.domain.HotkeyStateMachine
@@ -12,14 +14,12 @@ import com.bolobhai.domain.applyCorrections
 import com.bolobhai.domain.buildSystemPrompt
 import com.bolobhai.domain.capitalizeFirst
 import com.bolobhai.domain.cleanupLlmOutput
-import com.bolobhai.domain.whisperPrompt
 import com.bolobhai.domain.shortProfileName
+import com.bolobhai.domain.whisperPrompt
 import com.bolobhai.sidecar.LlamaClient
 import com.bolobhai.sidecar.ProcessSupervisor
 import com.bolobhai.sidecar.SidecarStatus
 import com.bolobhai.sidecar.WhisperClient
-import com.bolobhai.data.Dictation
-import com.bolobhai.data.NewVersion
 import com.bolobhai.ui.components.slotKeyVisual
 import com.bolobhai.ui.pill.PillPhase
 import com.bolobhai.ui.pill.PillUiState
@@ -51,7 +51,7 @@ import kotlin.io.path.createDirectories
  */
 class HotkeyController(
     private val appState: AppState,
-    private val hotkeyLabel: String,
+    @Volatile var hotkeyLabel: String,
     private val pasteShortcut: String,
     launchWhisper: (port: Int) -> Process?,
     launchLlama: (port: Int) -> Process?,
@@ -243,10 +243,10 @@ class HotkeyController(
         return cleanupLlmOutput(raw).takeIf { it.isNotBlank() }
     }
 
-    /** The locked base system prompt (rendered from output-language settings) with the profile on top (#1). */
+    /** The locked base system prompt (rendered from the selected STT language) with the profile on top (#1). */
     private fun systemPromptFor(profile: Profile): String {
         val s = appState.settings.value
-        return buildSystemPrompt(profile.body, s.outputLanguages, s.outputScript)
+        return buildSystemPrompt(profile.body, s.language)
     }
 
     private fun llmVersion(profile: Profile, output: String) =

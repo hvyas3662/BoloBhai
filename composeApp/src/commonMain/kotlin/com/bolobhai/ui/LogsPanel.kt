@@ -60,14 +60,16 @@ fun LogsPanel(onToast: (String) -> Unit = {}) {
             if (entries.isEmpty()) {
                 Text("No logs yet.", style = Bolo.type.monoSmall, color = c.muted)
             } else {
-                Column {
-                    entries.forEach { e ->
-                        val color = when (e.level) {
-                            Logger.Level.ERROR -> c.red
-                            Logger.Level.WARN -> c.orange
-                            Logger.Level.INFO -> c.muted
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Column {
+                        entries.forEach { e ->
+                            val color = when (e.level) {
+                                Logger.Level.ERROR -> c.red
+                                Logger.Level.WARN -> c.orange
+                                Logger.Level.INFO -> c.muted
+                            }
+                            Text(line(e), style = Bolo.type.monoSmall, color = color)
                         }
-                        Text(line(e), style = Bolo.type.monoSmall, color = color)
                     }
                 }
             }

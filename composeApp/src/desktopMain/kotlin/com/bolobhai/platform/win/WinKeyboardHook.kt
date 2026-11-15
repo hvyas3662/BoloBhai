@@ -21,12 +21,21 @@ private const val WM_SYSKEYUP = 0x0105
  * is not exercised by headless tests.
  */
 class WinKeyboardHook(
-    private val dictationKey: DictationKey,
+    dictationKey: DictationKey,
     private val onInput: (HotkeyInput) -> Boolean,
     private val isRecording: () -> Boolean,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
-    private val vks = dictationVks(dictationKey)
+    // The bound key can change live from Settings; the hook thread reads these volatile fields.
+    @Volatile private var dictationKey: DictationKey = dictationKey
+    @Volatile private var vks: Set<Int> = dictationVks(dictationKey)
+
+    /** Rebind the dictation key without restarting the app (BoloBhai.md §13.6). */
+    fun setDictationKey(key: DictationKey) {
+        dictationKey = key
+        vks = dictationVks(key)
+    }
+
     private var thread: Thread? = null
     private var hook: WinUser.HHOOK? = null
 

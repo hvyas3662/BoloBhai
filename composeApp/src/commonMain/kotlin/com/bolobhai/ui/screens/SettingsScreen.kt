@@ -12,15 +12,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.Icon
-import com.bolobhai.ui.components.BoloIcons
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -35,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.bolobhai.app.AppState
 import com.bolobhai.audio.AudioRecorder
 import com.bolobhai.ui.components.BoloButton
+import com.bolobhai.ui.components.BoloIcons
 import com.bolobhai.ui.components.ButtonVariant
 import com.bolobhai.ui.theme.Bolo
 import com.bolobhai.ui.theme.BoloShapes
@@ -58,10 +57,22 @@ fun SettingsScreen(appState: AppState) {
         ) {
             // Two-column grid (BoloBhai.md §13.6).
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                Card("Hotkey", Modifier.weight(1f).fillMaxHeight()) {
-                    Segmented(listOf("Fn", "Alt", "Right Ctrl"), settings.hotkey.windows) { appState.setHotkeyWindows(it) }
-                    Text("Fn works only if your laptop reports it to Windows. Takes effect on restart.", style = Bolo.type.meta, color = Bolo.colors.muted)
+                Card("General", Modifier.weight(1f).fillMaxHeight()) {
+                    Segmented(listOf("Dark", "Light", "System"), theme.name) { appState.setTheme(ThemeMode.valueOf(it)) }
+                    LabeledSwitch("Launch at login", settings.launchAtLogin) { appState.setLaunchAtLogin(it) }
                 }
+                Card("Hotkey", Modifier.weight(1f).fillMaxHeight()) {
+                    val keys = listOf("Fn", "Alt", "Right Ctrl")
+                    Picker(
+                        label = settings.hotkey.windows,
+                        options = keys.map { it to (it as String?) },
+                        onPick = { it?.let(appState::setHotkeyWindows) },
+                    )
+                    Text("Fn works only if your laptop reports it to Windows. Applies instantly — no restart needed.", style = Bolo.type.meta, color = Bolo.colors.muted)
+                }
+            }
+
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 Card("Audio", Modifier.weight(1f).fillMaxHeight()) {
                     val devices = remember { listOf<String?>(null) + AudioRecorder.inputDevices() }
                     Picker(
@@ -71,13 +82,6 @@ fun SettingsScreen(appState: AppState) {
                     )
                     LabeledSwitch("Start / stop sound", settings.sounds) { appState.setSounds(it) }
                 }
-            }
-
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                Card("General", Modifier.weight(1f).fillMaxHeight()) {
-                    Segmented(listOf("Dark", "Light", "System"), theme.name) { appState.setTheme(ThemeMode.valueOf(it)) }
-                    LabeledSwitch("Launch at login", settings.launchAtLogin) { appState.setLaunchAtLogin(it) }
-                }
                 Card("History & storage", Modifier.weight(1f).fillMaxHeight()) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Keep audio for", style = Bolo.type.body, color = Bolo.colors.text)
@@ -86,33 +90,6 @@ fun SettingsScreen(appState: AppState) {
                     }
                     BoloButton("Clear all history", variant = ButtonVariant.Danger, onClick = { confirmClear = true })
                 }
-            }
-
-            Card("Cleanup language") {
-                Text("Languages you speak", style = Bolo.type.sectionLabel, color = Bolo.colors.muted)
-                SegmentedMapped(
-                    com.bolobhai.domain.languageOptions.associate { it.key to it.label },
-                    settings.outputLanguages,
-                ) { appState.setOutputLanguages(it) }
-                Text("Output script", style = Bolo.type.sectionLabel, color = Bolo.colors.muted)
-                SegmentedMapped(
-                    com.bolobhai.domain.ScriptRule.entries.associate { it.key to it.label },
-                    settings.outputScript,
-                ) { appState.setOutputScript(it) }
-                Text(
-                    "Controls how the LLM cleans up your dictation (e.g. Hinglish in Roman letters). Takes effect on the next dictation.",
-                    style = Bolo.type.meta, color = Bolo.colors.muted,
-                )
-            }
-
-            Card("Post-processing") {
-                LabeledSwitch("Clean up transcript with LLM", settings.postProcessing) { appState.setPostProcessing(it) }
-                LabeledSwitch("Low-VRAM mode · swap models per dictation", settings.lowVramSwap) { appState.setLowVramSwap(it) }
-                Text(
-                    "For small GPUs (≈4 GB): runs Whisper and the LLM one at a time so the LLM fully offloads. " +
-                        "Best quality, but adds a model (re)load each dictation.",
-                    style = Bolo.type.meta, color = Bolo.colors.muted,
-                )
             }
         }
     }
