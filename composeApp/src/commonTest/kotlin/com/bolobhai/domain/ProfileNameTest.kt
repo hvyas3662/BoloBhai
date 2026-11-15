@@ -7,11 +7,9 @@ class ProfileNameTest {
 
     @Test
     fun knownDefaults_mapToSpecNames() {
-        assertEquals("Hinglish Clean", profileDisplayName("hinglish-clean.md"))
-        assertEquals("Numbered List", profileDisplayName("numbered-list.md"))
-        assertEquals("Email", profileDisplayName("email.md"))
-        assertEquals("WhatsApp Message", profileDisplayName("whatsapp-message.md"))
-        assertEquals("Meeting Notes", profileDisplayName("meeting-notes.md"))
+        assertEquals("Hinglish", profileDisplayName("hinglish.md"))
+        assertEquals("Proper English", profileDisplayName("proper-english.md"))
+        assertEquals("AI Prompt", profileDisplayName("ai-prompt.md"))
     }
 
     @Test

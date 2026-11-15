@@ -1,5 +1,8 @@
 package com.bolobhai.sidecar
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -63,5 +66,25 @@ class ProcessSupervisorTest {
         assertEquals(SidecarStatus.Ready, s.start())
         assertEquals(1, gpuLaunches)  // tried GPU once
         assertEquals(1, cpuLaunches)  // then fell back to CPU
+    }
+
+    @Test
+    fun stopDuringStartup_haltsRetryLoop_noRelaunch() = runBlocking {
+        var launches = 0
+        val parked = CompletableDeferred<Unit>()   // the loop parked on its first health retry
+        val release = CompletableDeferred<Unit>()   // let it resume after we call stop()
+        val s = ProcessSupervisor(
+            launch = { launches++; FakeProcess() },
+            healthCheck = { false },
+            maxHealthChecks = 10,
+            delayer = { if (!parked.isCompleted) parked.complete(Unit); release.await() },
+        )
+        val job = launch(Dispatchers.Default) { s.start() }
+        parked.await()        // one launch has happened; loop is waiting
+        s.stop()              // supersede the running loop
+        release.complete(Unit)
+        job.join()
+        assertEquals(1, launches)                       // never relaunched after stop
+        assertEquals(SidecarStatus.Stopped, s.status.value)
     }
 }

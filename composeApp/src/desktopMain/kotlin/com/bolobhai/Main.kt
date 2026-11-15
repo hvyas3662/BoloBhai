@@ -206,6 +206,9 @@ fun main() = application {
                 hook?.stop()
                 macHelper.stop()
                 controller.stopSidecars()
+                // Guaranteed sweep: kill any whisper/llama server by name in case one slipped the
+                // supervisor's grasp (mid-(re)launch), so quitting never leaves a server holding VRAM.
+                com.bolobhai.platform.SidecarProcess.killStale()
                 watcher.stop()
                 exitApplication()
             }

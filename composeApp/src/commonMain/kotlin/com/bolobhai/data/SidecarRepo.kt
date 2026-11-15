@@ -1,6 +1,5 @@
 package com.bolobhai.data
 
-import com.bolobhai.domain.sha256Hex
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.net.HttpURLConnection
@@ -75,7 +74,7 @@ class SidecarRepo(private val dir: Path) {
         conn.disconnect()
 
         if (entry.sha256.isNotEmpty()) {
-            val actual = sha256Hex(Files.readAllBytes(part))
+            val actual = sha256HexOf(part)
             require(actual == entry.sha256) { "SHA-256 mismatch for ${entry.engine} ${entry.backend}" }
         }
 
@@ -83,6 +82,20 @@ class SidecarRepo(private val dir: Path) {
         Files.writeString(marker(entry), entry.backend)
         part.deleteIfExists()
         onProgress(Progress(have, entry.sizeBytes, 0))
+    }
+
+    /** SHA-256 of [file], streamed in chunks — the sidecar zips are ~700 MB, so never read whole. */
+    internal fun sha256HexOf(file: Path): String {
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        Files.newInputStream(file).use { input ->
+            val buf = ByteArray(1 shl 16)
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                md.update(buf, 0, n)
+            }
+        }
+        return md.digest().joinToString("") { "%02x".format(it) }
     }
 
     /** Replace [target] with a clean extraction of the zip (stale DLLs from a prior backend gone). */

@@ -41,6 +41,6 @@ class SystemPromptTest {
     fun buildStacksProfileBodyOnTop() {
         val built = buildSystemPrompt("Turn it into a list.", "hi")
         assertTrue(built.trimEnd().endsWith("Turn it into a list."))
-        assertContains(built, "You clean up dictated speech-to-text transcripts.")
+        assertContains(built, "You clean up and format dictated speech-to-text transcripts")
     }
 }

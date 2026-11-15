@@ -8,16 +8,16 @@ fun formatTimer(ms: Long): String {
     return "$minutes:${seconds.toString().padStart(2, '0')}"
 }
 
-/** Short pill profile label (BoloBhai.md §8): Hinglish · List · Email · WhatsApp · Notes · Raw. */
+/** Short pill profile label (BoloBhai.md §8): Hinglish · English · Prompt · WhatsApp · Email · Raw. */
 fun shortProfileName(fileName: String?): String {
     if (fileName.isNullOrBlank()) return "Raw"
     return shortNames[fileName] ?: profileDisplayName(fileName)
 }
 
 private val shortNames = mapOf(
-    "hinglish-clean.md" to "Hinglish",
-    "numbered-list.md" to "List",
-    "email.md" to "Email",
+    "hinglish.md" to "Hinglish",
+    "proper-english.md" to "English",
+    "ai-prompt.md" to "Prompt",
     "whatsapp-message.md" to "WhatsApp",
-    "meeting-notes.md" to "Notes",
+    "professional-email.md" to "Email",
 )

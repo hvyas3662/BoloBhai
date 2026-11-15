@@ -46,6 +46,15 @@ class SidecarRepoTest {
         assertFailsWith<IllegalArgumentException> { repo.extract(zip, root.resolve("windows").resolve("llama")) }
     }
 
+    @Test fun sha256HexOf_matchesKnownDigest() {
+        val root = Files.createTempDirectory("sc")
+        val repo = SidecarRepo(root)
+        val f = root.resolve("blob.bin")
+        Files.writeString(f, "abc")
+        // SHA-256("abc")
+        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", repo.sha256HexOf(f))
+    }
+
     @Test fun installedBackend_readsMarker() {
         val root = Files.createTempDirectory("sc")
         val repo = SidecarRepo(root)

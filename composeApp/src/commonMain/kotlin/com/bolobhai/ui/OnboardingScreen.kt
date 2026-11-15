@@ -20,9 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
-import org.jetbrains.compose.resources.painterResource
-import com.bolobhai.resources.Res
-import com.bolobhai.resources.app_icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -38,18 +35,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.bolobhai.app.AppState
 import com.bolobhai.app.ModelsController
-import com.bolobhai.app.SidecarsController
 import com.bolobhai.app.Screen
+import com.bolobhai.app.SidecarsController
 import com.bolobhai.audio.AudioRecorder
 import com.bolobhai.domain.ModelState
 import com.bolobhai.domain.formatBytes
 import com.bolobhai.domain.formatProgress
+import com.bolobhai.resources.Res
+import com.bolobhai.resources.app_icon
 import com.bolobhai.ui.components.BoloButton
 import com.bolobhai.ui.components.ButtonVariant
 import com.bolobhai.ui.components.Kbd
 import com.bolobhai.ui.theme.Bolo
 import com.bolobhai.ui.theme.BoloShapes
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 
 // Step indices for the guided flow (#3).
 private const val WELCOME = 0
@@ -69,7 +69,13 @@ fun OnboardingScreen(appState: AppState, models: ModelsController, sidecars: Sid
 
     val modelRows by models.models.collectAsState()
     val defaults = modelRows.filter { it.entry.default }
+    val engineRows by sidecars.rows.collectAsState()
     val settings by appState.settings.collectAsState()
+
+    // The Models step must not be passed until models AND the engine (sidecars) are both
+    // installed — otherwise the pipeline runs with "server binary not found" (BoloBhai.md §16).
+    val setupReady = defaults.isNotEmpty() && defaults.all { it.state == ModelState.Installed } &&
+        engineRows.all { it.installed }
 
     // A shared recorder for the mic-check meter and the speak-and-verify step.
     val recorder = remember { AudioRecorder() }
@@ -126,7 +132,7 @@ fun OnboardingScreen(appState: AppState, models: ModelsController, sidecars: Sid
                 if (step > WELCOME) BoloButton("Back", onClick = { step-- })
                 Spacer(Modifier.weight(1f))
                 if (step < READY) {
-                    BoloButton("Continue", variant = ButtonVariant.Primary, onClick = { step++ })
+                    BoloButton("Continue", variant = ButtonVariant.Primary, enabled = step != MODELS || setupReady, onClick = { step++ })
                 } else {
                     BoloButton("Start dictating", variant = ButtonVariant.Primary, onClick = { finish(appState) })
                 }

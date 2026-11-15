@@ -28,9 +28,15 @@ class ProcessSupervisor(
 
     private var process: Process? = null
 
+    // Bumped by every start()/stop(). A running start() loop only keeps going while its captured
+    // token still matches — so stop() (or a restart) halts the old loop instead of letting it
+    // relaunch a fresh server after we killed the process (which would orphan it on quit, #9).
+    @Volatile private var generation = 0
+
     suspend fun start(): SidecarStatus {
+        val gen = ++generation
         var attempt = 0
-        while (true) {
+        while (generation == gen) {
             _status.value = SidecarStatus.Starting
             val p = (if (attempt > 0 && fallbackLaunch != null) fallbackLaunch else launch)()
             if (p == null) {
@@ -40,6 +46,7 @@ class ProcessSupervisor(
             process = p
 
             repeat(maxHealthChecks) {
+                if (generation != gen) { p.destroy(); return SidecarStatus.Stopped }
                 if (healthCheck()) {
                     _status.value = SidecarStatus.Ready
                     return SidecarStatus.Ready
@@ -56,9 +63,11 @@ class ProcessSupervisor(
             delayer(wait)
             attempt++
         }
+        return SidecarStatus.Stopped
     }
 
     fun stop() {
+        generation++ // halt any running start() loop so it won't relaunch the process we kill here
         process?.destroy()
         process = null
         _status.value = SidecarStatus.Stopped

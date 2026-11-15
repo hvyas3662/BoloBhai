@@ -22,7 +22,7 @@ class SettingsJsonTest {
           "postProcessing": true,
           "activeWhisperModel": "ggml-large-v3-turbo.bin",
           "activeLlmModel": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
-          "quickSlots": { "1": "hinglish-clean.md", "2": "numbered-list.md", "3": "email.md", "4": "whatsapp-message.md", "5": null },
+          "quickSlots": { "1": "hinglish.md", "2": "proper-english.md", "3": "ai-prompt.md", "4": "whatsapp-message.md", "5": "professional-email.md" },
           "activeSlot": 1,
           "windowBounds": null,
           "debugLogging": false
@@ -58,7 +58,8 @@ class SettingsJsonTest {
 
     @Test
     fun emptySlot_staysNull() {
-        assertNull(SettingsJson.decode(specJson).quickSlots["5"])
-        assertTrue(SettingsJson.decode(specJson).quickSlots["1"] == "hinglish-clean.md")
+        val json = """{ "quickSlots": { "1": "hinglish.md", "5": null } }"""
+        assertNull(SettingsJson.decode(json).quickSlots["5"])
+        assertTrue(SettingsJson.decode(json).quickSlots["1"] == "hinglish.md")
     }
 }

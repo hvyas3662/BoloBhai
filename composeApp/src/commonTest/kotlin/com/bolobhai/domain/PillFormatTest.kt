@@ -16,11 +16,9 @@ class PillFormatTest {
 
     @Test
     fun shortName_knownDefaults() {
-        assertEquals("Hinglish", shortProfileName("hinglish-clean.md"))
-        assertEquals("List", shortProfileName("numbered-list.md"))
-        assertEquals("Email", shortProfileName("email.md"))
-        assertEquals("WhatsApp", shortProfileName("whatsapp-message.md"))
-        assertEquals("Notes", shortProfileName("meeting-notes.md"))
+        assertEquals("Hinglish", shortProfileName("hinglish.md"))
+        assertEquals("English", shortProfileName("proper-english.md"))
+        assertEquals("Prompt", shortProfileName("ai-prompt.md"))
     }
 
     @Test

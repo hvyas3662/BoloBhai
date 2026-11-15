@@ -12,12 +12,12 @@ class ProfilesRepoTest {
     private fun repo() = ProfilesRepo(Files.createTempDirectory("bolobhai-profiles"))
 
     @Test
-    fun ensureDefaults_writesFiveShippedProfiles() {
+    fun ensureDefaults_writesShippedProfiles() {
         val r = repo()
         r.ensureDefaults()
         val names = r.list().map { it.fileName }.toSet()
         assertEquals(
-            setOf("hinglish-clean.md", "numbered-list.md", "email.md", "whatsapp-message.md", "meeting-notes.md"),
+            setOf("hinglish.md", "proper-english.md", "ai-prompt.md", "whatsapp-message.md", "professional-email.md"),
             names,
         )
     }

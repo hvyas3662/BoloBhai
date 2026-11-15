@@ -15,9 +15,9 @@ fun profileDisplayName(fileName: String?): String {
 }
 
 private val knownDefaults = mapOf(
-    "hinglish-clean.md" to "Hinglish Clean",
-    "numbered-list.md" to "Numbered List",
-    "email.md" to "Email",
+    "hinglish.md" to "Hinglish",
+    "proper-english.md" to "Proper English",
+    "ai-prompt.md" to "AI Prompt",
     "whatsapp-message.md" to "WhatsApp Message",
-    "meeting-notes.md" to "Meeting Notes",
+    "professional-email.md" to "Professional Email",
 )

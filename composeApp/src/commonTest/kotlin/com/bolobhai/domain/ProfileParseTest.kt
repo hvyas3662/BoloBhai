@@ -39,8 +39,8 @@ class ProfileParseTest {
 
     @Test
     fun frontmatterWithoutName_derivesFromFile() {
-        val p = parseProfile("whatsapp-message.md", "---\nemoji: 💬\n---\nCasual message.")
-        assertEquals("WhatsApp Message", p.name)
+        val p = parseProfile("my-custom-note.md", "---\nemoji: 💬\n---\nCasual message.")
+        assertEquals("My Custom Note", p.name)
         assertEquals("💬", p.emoji)
     }
 

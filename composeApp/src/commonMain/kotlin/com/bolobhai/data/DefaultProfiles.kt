@@ -8,51 +8,41 @@ package com.bolobhai.data
  */
 object DefaultProfiles {
     val files: Map<String, String> = mapOf(
-        "hinglish-clean.md" to """
+        "hinglish.md" to """
             ---
-            name: Hinglish Clean
+            name: Hinglish
             ---
-            Return the cleaned-up transcript as ordinary prose, the way I said it.
-            Do not add structure, headings or lists.
+            Transliterate all Hindi/Hinglish words (including Devanagari script) into natural Roman script (Hinglish) as commonly typed in India (e.g., "abhi check karke batao"). Keep English words in standard spelling. Do not translate Hindi into English meaning.
         """.trimIndent() + "\n",
 
-        "numbered-list.md" to """
+        "proper-english.md" to """
             ---
-            name: Numbered List
+            name: Proper English
             ---
-            Turn what I said into a clean numbered list.
-            - One item per line.
-            - Remove counting words (pehla, dusra, teesra, first, second).
-            - If I said a heading before the items, put it on the first line followed by a colon.
-            - Return only the list.
+            Translate all Hindi and Hinglish phrases into clear, grammatically correct, and natural English while preserving the exact original meaning and tone.
         """.trimIndent() + "\n",
 
-        "email.md" to """
+        "ai-prompt.md" to """
             ---
-            name: Email
+            name: AI Prompt
             ---
-            Turn my dictation into a short, polite email.
-            - Add a greeting and a sign-off.
-            - Return only the email body.
+            Translate and convert the text into a clear, well-structured, and effective prompt in English meant to be pasted into an AI assistant. Organize requirements cleanly.
         """.trimIndent() + "\n",
 
         "whatsapp-message.md" to """
             ---
             name: WhatsApp Message
             ---
-            Write a casual WhatsApp message, the way I said it.
-            - Short sentences. No formal greeting.
-            - Return only the message.
+            Translate and style the spoken content (regardless of input language) into a casual, conversational, and chat-friendly WhatsApp message in English.
+            Keep it concise, warm, and natural for instant messaging; avoid overly formal or robotic phrasing.
         """.trimIndent() + "\n",
 
-        "meeting-notes.md" to """
+        "professional-email.md" to """
             ---
-            name: Meeting Notes
+            name: Professional Email
             ---
-            Turn what I said into short meeting notes.
-            - One bullet per point, starting with "- ".
-            - Keep owners and dates exact.
-            - Return only the notes, with "Notes:" as the first line.
+            Translate and format the spoken content (regardless of input language) into a polished, polite, and professional email in English.
+            Include a concise, relevant "Subject:" line at the top, an appropriate greeting, short readable paragraphs (or bullet points for multiple items), and a standard professional sign-off.
         """.trimIndent() + "\n",
     )
 }
