@@ -58,6 +58,11 @@ compose.desktop {
             vendor = "Bolo Bhai"
             description = "Local offline Hinglish voice dictation"
 
+            // Bundle a full JDK runtime. JNA, SQLite-JDBC and Ktor load modules
+            // reflectively, so jlink's auto-detection leaves them out and the
+            // packaged app fails with "Failed to launch JVM".
+            includeAllModules = true
+
             windows {
                 iconFile.set(project.rootProject.file("resources/icons/bolobhai.ico"))
                 menuGroup = "Bolo Bhai"
