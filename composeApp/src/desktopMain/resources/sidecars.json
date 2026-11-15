@@ -1,14 +1,14 @@
 {
   "_note": "Each zip is a GitHub Release asset (direct download). engine x backend x os must match what the app detects. sha256 empty = skip verification. Windows assets live under the Sidecars-v1 release; macOS assets are placeholders until built on a Mac and uploaded to the same release.",
   "sidecars": [
-    { "engine": "whisper", "backend": "cpu",    "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/whisper-win-cpu.zip",    "sizeBytes": 4177218,   "sha256": "" },
-    { "engine": "llama",   "backend": "cpu",    "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/llama-win-cpu.zip",      "sizeBytes": 26557452,  "sha256": "" },
+    { "engine": "whisper", "backend": "cpu",    "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/whisper-win-cpu.zip",    "sizeBytes": 4177218,   "sha256": "3bf0566a8ba3d11873673b051832c1cecd6ad29425b55172e63184e8ad2c1e20" },
+    { "engine": "llama",   "backend": "cpu",    "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/llama-win-cpu.zip",      "sizeBytes": 26557452,  "sha256": "14f2f2df170fd839e5b49b70f4db3f3818eb345378c28cf0f83d49baf9cc88c7" },
 
-    { "engine": "whisper", "backend": "cuda",   "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/whisper-win-cuda.zip",   "sizeBytes": 684912636, "sha256": "" },
-    { "engine": "llama",   "backend": "cuda",   "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/llama-win-cuda.zip",     "sizeBytes": 733312288, "sha256": "" },
+    { "engine": "whisper", "backend": "cuda",   "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/whisper-win-cuda.zip",   "sizeBytes": 684912636, "sha256": "6ec4871784757d766089ab673452efe6df7f8cef9609bfe4b8dd262d72634bd4" },
+    { "engine": "llama",   "backend": "cuda",   "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/llama-win-cuda.zip",     "sizeBytes": 733312288, "sha256": "7a199e687dd072b3676494573fb0472537f6cd2f637fc24b959df94d9c1ff49e" },
 
-    { "engine": "whisper", "backend": "vulkan", "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/whisper-win-vulkan.zip", "sizeBytes": 17860401,  "sha256": "" },
-    { "engine": "llama",   "backend": "vulkan", "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/llama-win-vulkan.zip",   "sizeBytes": 39611553,  "sha256": "" },
+    { "engine": "whisper", "backend": "vulkan", "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/whisper-win-vulkan.zip", "sizeBytes": 17860401,  "sha256": "381537bb1cd838028d0dab9b9dbc98946ef55adc699f7f097ebaec836e918d74" },
+    { "engine": "llama",   "backend": "vulkan", "os": "windows", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/llama-win-vulkan.zip",   "sizeBytes": 39611553,  "sha256": "915088e82aa38bbd06cb70dc7fccadd9e030d88e822c7e40b1d37453d8592818" },
 
     { "engine": "whisper", "backend": "metal",  "os": "macos-arm64", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/whisper-mac-arm64.zip", "sizeBytes": 20000000, "sha256": "" },
     { "engine": "llama",   "backend": "metal",  "os": "macos-arm64", "url": "https://github.com/hvyas3662/BoloBhai/releases/download/Sidecars-v1/llama-mac-arm64.zip",   "sizeBytes": 20000000, "sha256": "" }
