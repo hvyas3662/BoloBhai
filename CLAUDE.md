@@ -120,3 +120,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+1. Input language 
+2. configure sidecart download url 
+3. in windows should auto start on startup in orboarding ask user for this later chnage in settings
+4. alt and fn on the go chnage hona chiye 
+

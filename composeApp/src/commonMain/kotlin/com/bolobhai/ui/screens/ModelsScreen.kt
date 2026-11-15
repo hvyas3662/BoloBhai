@@ -12,10 +12,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.bolobhai.app.AppState
 import com.bolobhai.app.ModelUi
 import com.bolobhai.app.ModelsController
@@ -37,6 +41,8 @@ import com.bolobhai.domain.SystemHardware
 import com.bolobhai.domain.formatBytes
 import com.bolobhai.domain.formatProgress
 import com.bolobhai.ui.components.BoloButton
+import com.bolobhai.ui.components.BoloIcons
+import com.bolobhai.ui.components.BoloTextField
 import com.bolobhai.ui.components.ButtonVariant
 import com.bolobhai.ui.theme.Bolo
 import com.bolobhai.ui.theme.BoloShapes
@@ -78,7 +84,7 @@ fun ModelsScreen(appState: AppState, controller: ModelsController) {
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Post-processing with LLM", style = Bolo.type.body, color = Bolo.colors.text)
-                    androidx.compose.material3.Switch(settings.postProcessing, { appState.setPostProcessing(it) })
+                    com.bolobhai.ui.components.BoloSwitch(settings.postProcessing) { appState.setPostProcessing(it) }
                 }
             }
         }
@@ -115,31 +121,68 @@ private fun KindSection(title: String, rows: List<ModelUi>, controller: ModelsCo
     }
 }
 
-/** A "Change model ▾" dropdown listing every model of this kind as a readable card (#11). */
+/** "Change model" opens a searchable dialog of all models of this kind (#11). */
 @Composable
 private fun ModelPicker(rows: List<ModelUi>, controller: ModelsController) {
     val c = Bolo.colors
     var open by remember { mutableStateOf(false) }
-    Box {
-        Row(
-            Modifier.clip(BoloShapes.input).background(c.input).border(1.dp, c.border, BoloShapes.input)
-                .clickable { open = true }.padding(horizontal = 14.dp, vertical = 10.dp),
-        ) { Text("Change model  ▾", style = Bolo.type.button, color = c.text) }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            Column(Modifier.width(420.dp).padding(8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                rows.forEach { ModelCard(it, controller, inMenu = true) }
+    Row(
+        Modifier.fillMaxWidth().clip(BoloShapes.input).background(c.input).border(1.dp, c.border, BoloShapes.input)
+            .clickable { open = true }.padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Change model", style = Bolo.type.button, color = c.text, modifier = Modifier.weight(1f))
+        Icon(BoloIcons.ChevronDown, contentDescription = null, tint = c.muted, modifier = Modifier.size(18.dp))
+    }
+    if (open) ModelPickerDialog(rows, controller) { open = false }
+}
+
+/**
+ * Searchable model chooser. Clicking a downloaded (non-active) model selects it and closes. Download
+ * runs in the controller's own scope, so closing the dialog mid-download keeps it going in the
+ * background — reopening shows the live progress again.
+ */
+@Composable
+private fun ModelPickerDialog(rows: List<ModelUi>, controller: ModelsController, onDismiss: () -> Unit) {
+    val c = Bolo.colors
+    var query by remember { mutableStateOf("") }
+    val filtered = rows.filter {
+        query.isBlank() || it.entry.name.contains(query, ignoreCase = true) || it.entry.file.contains(query, ignoreCase = true)
+    }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.width(560.dp).heightIn(max = 640.dp).clip(BoloShapes.panelLarge).background(c.panel)
+                .border(1.dp, c.border, BoloShapes.panelLarge).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text("Choose model", style = Bolo.type.h2, color = c.text)
+            BoloTextField(query, { query = it }, placeholder = "Search models…", modifier = Modifier.fillMaxWidth())
+            Column(
+                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (filtered.isEmpty()) Text("No models match “$query”.", style = Bolo.type.meta, color = c.muted)
+                filtered.forEach { ui ->
+                    val selectable = ui.state == ModelState.Installed && !ui.active
+                    ModelCard(ui, controller, inMenu = true, onClick = if (selectable) ({ controller.use(ui.entry); onDismiss() }) else null)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                BoloButton("Close", onClick = onDismiss)
             }
         }
     }
 }
 
 @Composable
-private fun ModelCard(ui: ModelUi, controller: ModelsController, inMenu: Boolean) {
+private fun ModelCard(ui: ModelUi, controller: ModelsController, inMenu: Boolean, onClick: (() -> Unit)? = null) {
     val c = Bolo.colors
     Column(
         Modifier.fillMaxWidth()
-            .let { if (inMenu) it.clip(BoloShapes.card).background(c.card2).padding(14.dp) else it }
-            .let { if (ui.exceedsCapacity) it.border(1.dp, c.redBorder, BoloShapes.card) else it },
+            .then(if (inMenu) Modifier.clip(BoloShapes.card).background(c.card2) else Modifier)
+            .then(if (ui.exceedsCapacity) Modifier.border(1.dp, c.redBorder, BoloShapes.card) else Modifier)
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
+            .then(if (inMenu) Modifier.padding(14.dp) else Modifier),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -168,15 +211,33 @@ private fun ModelCard(ui: ModelUi, controller: ModelsController, inMenu: Boolean
 
 @Composable
 private fun Actions(ui: ModelUi, controller: ModelsController) {
+    var confirmDelete by remember { mutableStateOf(false) }
     when {
         ui.downloading -> BoloButton("Pause", onClick = { controller.pause(ui.entry) })
         ui.state == ModelState.Partial -> BoloButton("Resume", variant = ButtonVariant.Primary, onClick = { controller.download(ui.entry) })
         ui.state == ModelState.NotDownloaded -> BoloButton("Download", variant = ButtonVariant.Primary, onClick = { controller.download(ui.entry) })
         ui.state == ModelState.Installed && !ui.active -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             BoloButton("Use", variant = ButtonVariant.Primary, onClick = { controller.use(ui.entry) })
-            BoloButton("Delete", variant = ButtonVariant.Danger, onClick = { controller.delete(ui.entry) })
+            BoloButton("Delete", variant = ButtonVariant.Danger, onClick = { confirmDelete = true })
         }
         // Installed + active: no actions (BoloBhai.md §13.5).
+    }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete model", style = Bolo.type.h2, color = Bolo.colors.text) },
+            confirmButton = {
+                BoloButton("Delete", variant = ButtonVariant.Danger, onClick = { controller.delete(ui.entry); confirmDelete = false })
+            },
+            dismissButton = { BoloButton("Cancel", onClick = { confirmDelete = false }) },
+            text = {
+                Text(
+                    "Delete ${ui.entry.name}? The ${formatBytes(ui.entry.sizeBytes)} file will be removed from disk. You can download it again later.",
+                    style = Bolo.type.body, color = Bolo.colors.text,
+                )
+            },
+            containerColor = Bolo.colors.panel,
+        )
     }
 }
 

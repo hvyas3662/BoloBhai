@@ -24,6 +24,7 @@ import kotlinx.coroutines.delay
 import com.bolobhai.ui.screens.AllProfilesScreen
 import com.bolobhai.ui.screens.DictionaryScreen
 import com.bolobhai.ui.screens.HistoryScreen
+import com.bolobhai.ui.screens.LogsScreen
 import com.bolobhai.ui.screens.ModelsScreen
 import com.bolobhai.ui.screens.QuickProfilesScreen
 import com.bolobhai.ui.screens.SettingsScreen
@@ -75,5 +76,6 @@ private fun ContentHost(appState: AppState, screen: Screen, modelsController: Mo
         Screen.Dictionary -> DictionaryScreen(appState)
         Screen.Models -> ModelsScreen(appState, modelsController)
         Screen.Settings -> SettingsScreen(appState)
+        Screen.Logs -> LogsScreen(appState)
     }
 }

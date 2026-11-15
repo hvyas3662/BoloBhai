@@ -18,7 +18,8 @@ object LlamaLauncher {
             modelPath = modelPath,
             args = listOf(
                 "--host", "127.0.0.1", "--port", port.toString(), "-m", modelPath.toString(),
-                "-c", "16384", "-ngl", ngl, "--parallel", "1",
+                // 16384 OOMs the GPU (whisper is also resident) and crashes the CPU build; 4096 fits.
+                "-c", "4096", "-ngl", ngl, "--parallel", "1",
                 // Use the model's own Jinja chat template so per-request chat_template_kwargs apply
                 // (e.g. enable_thinking=false for Qwen3/3.5; without this they run to the token cap).
                 "--jinja",

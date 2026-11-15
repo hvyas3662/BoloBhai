@@ -88,6 +88,7 @@ fun Sidebar(appState: AppState, hotkeyLabel: String, statusLine: String, ready: 
             NavItem(Screen.Dictionary, BoloIcons.Dictionary, null),
             NavItem(Screen.Models, BoloIcons.Models, null),
             NavItem(Screen.Settings, BoloIcons.Settings, null),
+            NavItem(Screen.Logs, BoloIcons.Logs, null),
         )
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             items.forEach { item ->

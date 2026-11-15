@@ -160,6 +160,9 @@ fun main() = application {
         appState.loadHistory()
         appState.runAudioRetention()
         watcher.start { appState.reloadProfiles() }
+        // A hard crash skips the shutdown hook below, orphaning sidecars that keep RAM + VRAM and
+        // break the next session's model load (CUDA OOM). Sweep them before starting fresh ones.
+        com.bolobhai.platform.SidecarProcess.killStale()
         controller.startSidecars()
         // Safety net: kill the sidecar servers if the JVM exits any other way than Quit.
         Runtime.getRuntime().addShutdownHook(Thread { controller.stopSidecars() })

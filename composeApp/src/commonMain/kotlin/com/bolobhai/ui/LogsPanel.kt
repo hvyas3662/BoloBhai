@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -39,7 +39,7 @@ fun LogsPanel(onToast: (String) -> Unit = {}) {
     val entries by Logger.entries.collectAsState()
 
     Column(
-        Modifier.fillMaxWidth().clip(BoloShapes.card).background(c.card).border(1.dp, c.border, BoloShapes.card).padding(20.dp),
+        Modifier.fillMaxSize().clip(BoloShapes.card).background(c.card).border(1.dp, c.border, BoloShapes.card).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -54,7 +54,7 @@ fun LogsPanel(onToast: (String) -> Unit = {}) {
             }
         }
         Box(
-            Modifier.fillMaxWidth().height(260.dp).clip(BoloShapes.input).background(c.input)
+            Modifier.fillMaxWidth().weight(1f).clip(BoloShapes.input).background(c.input)
                 .border(1.dp, c.border, BoloShapes.input).padding(12.dp).verticalScroll(rememberScrollState()),
         ) {
             if (entries.isEmpty()) {

@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.Switch
 import org.jetbrains.compose.resources.painterResource
 import com.bolobhai.resources.Res
 import com.bolobhai.resources.app_icon
@@ -239,7 +238,7 @@ private fun StartupStep(launchAtLogin: Boolean, onChange: (Boolean) -> Unit) = C
     Text("Start with Windows", style = Bolo.type.h2, color = Bolo.colors.text)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text("Launch Bolo Bhai at login", style = Bolo.type.body, color = Bolo.colors.text)
-        Switch(checked = launchAtLogin, onCheckedChange = onChange)
+        com.bolobhai.ui.components.BoloSwitch(checked = launchAtLogin, onCheckedChange = onChange)
     }
     Text("So your hotkey is ready the moment you log in. You can change this later in Settings.", style = Bolo.type.meta, color = Bolo.colors.muted)
 }

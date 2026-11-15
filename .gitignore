@@ -12,6 +12,10 @@ build/
 .DS_Store
 Thumbs.db
 
+# JVM crash logs
+hs_err_pid*.log
+replay_pid*.log
+
 # Local config
 local.properties
 

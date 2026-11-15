@@ -8,4 +8,5 @@ enum class Screen(val title: String) {
     Dictionary("Dictionary"),
     Models("Models"),
     Settings("Settings"),
+    Logs("Logs"),
 }

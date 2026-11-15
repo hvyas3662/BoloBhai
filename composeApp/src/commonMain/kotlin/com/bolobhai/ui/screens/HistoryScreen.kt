@@ -184,8 +184,8 @@ private fun HistoryCard(
     var expanded by remember(item.id) { mutableStateOf(false) }
     var showOriginal by remember(item.id) { mutableStateOf(false) }
     val version = item.versions.getOrNull(selectedVersion) ?: item.current
-    val reprocessing by appState.reprocessing.collectAsState()
-    val busy = item.id in reprocessing
+    val busyItems by appState.busyItems.collectAsState()
+    val busy = item.id in busyItems
 
     Box(Modifier.fillMaxWidth()) {
     Column(
@@ -216,11 +216,13 @@ private fun HistoryCard(
             modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
         )
 
-        if (failed && item.status == "llm_failed") {
+        // While retrying: hide the error + button (only the top-right loader shows). It reappears
+        // only if the retry fails again; on success the status flips to "ok" and it stays hidden.
+        if (failed && item.status == "llm_failed" && !busy) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("ⓘ Post-processing failed · raw transcript was pasted", style = Bolo.type.meta, color = c.red)
                 BoloButton("Retry", variant = ButtonVariant.Danger, onClick = {
-                    scope.launch { appState.retryOp?.invoke(item) }
+                    scope.launch { appState.runRetry(item) }
                 })
             }
         }
@@ -287,7 +289,7 @@ private fun MoreMenu(
             DropdownMenuItem(
                 text = { Text("Re-transcribe audio") },
                 enabled = item.audioPath != null,
-                onClick = { open = false; scope.launch { appState.retranscribeOp?.invoke(item) } },
+                onClick = { open = false; scope.launch { appState.runRetranscribe(item) } },
             )
             DropdownMenuItem(
                 text = { Text("Save audio as .wav") },

@@ -87,4 +87,12 @@ object BoloIcons {
         "Pause",
         "M8 4v16 M16 4v16",
     )
+    val ChevronDown = strokeIcon(
+        "ChevronDown",
+        "m6 9 6 6 6-6",
+    )
+    val Logs = strokeIcon(
+        "Logs",
+        "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z M14 2v5h5 M9 13h6 M9 17h5",
+    )
 }

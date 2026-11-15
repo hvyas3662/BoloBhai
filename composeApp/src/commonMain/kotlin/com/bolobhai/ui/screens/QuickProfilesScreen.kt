@@ -12,8 +12,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import com.bolobhai.ui.components.BoloIcons
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -173,10 +176,12 @@ private fun ProfilePicker(current: String?, profiles: List<Profile>, onPick: (St
 
     Box {
         Row(
-            Modifier.clip(BoloShapes.input).background(c.input).border(1.dp, c.border, BoloShapes.input)
+            Modifier.fillMaxWidth().clip(BoloShapes.input).background(c.input).border(1.dp, c.border, BoloShapes.input)
                 .clickable { open = true }.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(label, style = Bolo.type.body, color = c.text)
+            Text(label, style = Bolo.type.body, color = c.text, modifier = Modifier.weight(1f))
+            Icon(BoloIcons.ChevronDown, contentDescription = null, tint = c.muted, modifier = Modifier.size(18.dp))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(text = { Text("— Empty —") }, onClick = { onPick(null); open = false })

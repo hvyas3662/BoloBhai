@@ -69,16 +69,24 @@ class AppState(
     /** Transcribe raw PCM for onboarding's speak-and-verify step (#3); null if whisper isn't ready. */
     var onboardingTranscribeOp: (suspend (ByteArray) -> String?)? = null
 
-    /** History item ids currently being re-processed — drives the per-card loader (#7). */
-    private val _reprocessing = MutableStateFlow<Set<Long>>(emptySet())
-    val reprocessing: StateFlow<Set<Long>> = _reprocessing.asStateFlow()
+    /** History item ids with an LLM/whisper op in flight — drives the per-card loader (#7). */
+    private val _busyItems = MutableStateFlow<Set<Long>>(emptySet())
+    val busyItems: StateFlow<Set<Long>> = _busyItems.asStateFlow()
 
-    /** Run the wired re-process op while marking [item] in-flight so its card shows a loader. */
-    suspend fun runReprocess(item: Dictation, profile: Profile) {
-        val op = reprocessOp ?: return
-        _reprocessing.value = _reprocessing.value + item.id
-        try { op(item, profile) } finally { _reprocessing.value = _reprocessing.value - item.id }
+    private suspend fun runBusy(id: Long, op: suspend () -> Unit) {
+        _busyItems.value = _busyItems.value + id
+        try { op() } finally { _busyItems.value = _busyItems.value - id }
     }
+
+    /** Run the wired op for [item] while marking its card busy so it shows a loader. */
+    suspend fun runReprocess(item: Dictation, profile: Profile) =
+        reprocessOp?.let { op -> runBusy(item.id) { op(item, profile) } } ?: Unit
+
+    suspend fun runRetry(item: Dictation) =
+        retryOp?.let { op -> runBusy(item.id) { op(item) } } ?: Unit
+
+    suspend fun runRetranscribe(item: Dictation) =
+        retranscribeOp?.let { op -> runBusy(item.id) { op(item) } } ?: Unit
 
     private val _theme = MutableStateFlow(themeModeOf(_settings.value.theme))
     val theme: StateFlow<ThemeMode> = _theme.asStateFlow()

@@ -8,11 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -52,9 +49,11 @@ fun DictionaryScreen(appState: AppState) {
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(32.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                CustomWordsCard(dict, Modifier.weight(1f).fillMaxHeight()) { appState.saveDictionary(it) }
-                CorrectionsCard(dict, Modifier.weight(1f).fillMaxHeight()) { appState.saveDictionary(it) }
+            // No IntrinsicSize.Min here: CustomWordsCard uses FlowRow, which throws on intrinsic
+            // measurement (Compose 1.7.3). Let each column size to its own content instead.
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                CustomWordsCard(dict, Modifier.weight(1f)) { appState.saveDictionary(it) }
+                CorrectionsCard(dict, Modifier.weight(1f)) { appState.saveDictionary(it) }
             }
             TryItCard(dict)
         }
